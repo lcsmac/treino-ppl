@@ -1,0 +1,322 @@
+import * as L from './logic.js';
+import * as store from './store.js';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ROLE = ['Principal', 'Alternativa 1', 'Alternativa 2'];
+let P, logs = {}, states = {}, meta = {}, view = null, undo = null, toastTimer = null, focusValue = false;
+
+const now = () => new Date().toISOString();
+const wo = () => L.getWorkout(P, view.week, view.type);
+const lineOf = () => L.getLine(wo(), view.lineId);
+const stOf = line => L.lineState(states, P.id, line);
+const exName = (line, o) => P.exercises[line.options[o].ex];
+const doneCount = () => Object.values(logs).filter(r => r.status === 'done' && !r.deleted).length;
+
+async function init() {
+  P = await (await fetch('program.json')).json();
+  const s = await store.load();
+  logs = s.logs; states = s.states; meta = s.meta;
+  const t = L.resumeTarget(P, logs, states, meta.position);
+  view = { week: t.week, type: t.type, lineId: null, set: 1 };
+  const w = wo(); const step = t.step || { lineId: w.lines[0].id, set: 1 };
+  view.lineId = step.lineId; view.set = step.set;
+  render();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+  wake();
+  document.addEventListener('visibilitychange', wake);
+  if (window.visualViewport) {
+    const f = () => document.documentElement.style.setProperty('--kb', Math.max(0, innerHeight - visualViewport.height - visualViewport.offsetTop) + 'px');
+    visualViewport.addEventListener('resize', f); visualViewport.addEventListener('scroll', f);
+  }
+}
+async function wake() { try { if (document.visibilityState === 'visible' && navigator.wakeLock) await navigator.wakeLock.request('screen'); } catch { } }
+
+function persistState(line) { const k = L.stateKey(P.id, line.id); return store.put('states', k, states[k]); }
+function setMeta(k, v) { meta[k] = v; return store.put('meta', k, v); }
+function saveLog(r) { logs[r.id] = r; return store.put('logs', r.id, r); }
+
+function toast(text, undoFn) {
+  const t = $('toast'); clearTimeout(toastTimer);
+  t.innerHTML = `<span>${esc(text)}</span>${undoFn ? '<button data-act="undo">Desfazer</button>' : ''}`;
+  t.classList.add('show'); undo = undoFn || null;
+  toastTimer = setTimeout(() => { t.classList.remove('show'); undo = null; }, undoFn ? 7000 : 3500);
+}
+
+function go(week, type, lineId, set) {
+  view.week = week; view.type = type;
+  const w = wo();
+  if (!lineId) {
+    const step = L.nextPending(w, logs, states, P.id, null) || L.sequence(w, states, P.id)[0];
+    lineId = step.lineId; set = step.set;
+  }
+  view.lineId = lineId; view.set = set; render(); scrollTo(0, 0);
+}
+function goLine(lineId) {
+  const line = L.getLine(wo(), lineId), n = L.totalSets(line, stOf(line));
+  let s = 1; for (let i = 1; i <= n; i++) if (!L.positionDone(logs, P.id, line, i)) { s = i; break; }
+  view.lineId = lineId; view.set = s; render();
+}
+function move(d) {
+  const seq = L.sequence(wo(), states, P.id);
+  let i = seq.findIndex(s => s.lineId === view.lineId && s.set === view.set);
+  if (i < 0) i = 0;
+  const t = seq[Math.min(seq.length - 1, Math.max(0, i + d))];
+  view.lineId = t.lineId; view.set = t.set; render(); scrollTo(0, 0);
+}
+
+function currentRecord(line, opt, set) { return logs[L.logId(P.id, line.id, opt, set)]; }
+
+function readFields() {
+  const load = $('load'), val = $('val');
+  const usedSug = load.dataset.sug && load.classList.contains('sug');
+  return { loadText: usedSug ? load.dataset.sug : load.value, valueText: val.value };
+}
+function baseRecord(line, opt, set) {
+  return {
+    id: L.logId(P.id, line.id, opt, set), programId: P.id, week: view.week, workout: view.type, lineId: line.id, pos: line.pos,
+    opt, exId: line.options[opt].ex, exName: exName(line, opt), origName: exName(line, 0), set, optional: L.isOptionalSet(line, set),
+    load: null, value: null, unit: line.unit, status: 'draft', doneAt: null, updatedAt: now(), deleted: false, pass: 1
+  };
+}
+function saveDraft() {
+  const line = lineOf(), st = stOf(line), cur = currentRecord(line, st.opt, view.set);
+  const load = $('load'); if (load.classList.contains('sug') && document.activeElement === load) { /* usuário digitando */ }
+  const loadText = load.classList.contains('sug') ? '' : load.value, valueText = $('val').value;
+  const empty = loadText.trim() === '' && valueText.trim() === '';
+  if (cur && cur.status === 'done') {
+    saveLog({ ...cur, load: L.parseNum(loadText), value: L.parseNum(valueText), updatedAt: now() }); return;
+  }
+  if (empty) { if (cur && !cur.deleted) saveLog({ ...cur, deleted: true, updatedAt: now() }); return; }
+  saveLog({ ...(cur || baseRecord(line, st.opt, view.set)), load: L.parseNum(loadText), value: L.parseNum(valueText), deleted: false, status: 'draft', updatedAt: now() });
+}
+
+function register() {
+  const line = lineOf(), st = stOf(line), set = view.set;
+  const { loadText, valueText } = readFields();
+  const value = L.parseNum(valueText), load = L.parseNum(loadText);
+  if (value == null) { $('valf').classList.add('err'); $('val').focus(); toast(line.unit === 's' ? 'Informe os segundos.' : 'Informe as repetições.'); return; }
+  if (loadText.trim() !== '' && load == null) { $('loadf').classList.add('err'); toast('Carga inválida.'); return; }
+  const prev = currentRecord(line, st.opt, set), prevPos = meta.position;
+  const wasDone = prev && prev.status === 'done' && !prev.deleted;
+  const rec = { ...(prev || baseRecord(line, st.opt, set)), load, value, deleted: false, status: 'done', updatedAt: now(), doneAt: wasDone ? prev.doneAt : now() };
+  saveLog(rec);
+  if (wasDone) { toast('Alteração salva.'); render(); return; }
+  setMeta('position', { week: view.week, type: view.type, lineId: line.id, set });
+  const next = L.nextPending(wo(), logs, states, P.id, { lineId: line.id, set });
+  const back = () => { prev ? saveLog(prev) : saveLog({ ...rec, status: 'draft', doneAt: null, updatedAt: now() }); setMeta('position', prevPos || null); view.lineId = line.id; view.set = set; render(); };
+  if (next) { view.lineId = next.lineId; view.set = next.set; focusValue = true; toast(`Série ${set} registrada`, back); }
+  else toast('Treino concluído!', back);
+  render(); scrollTo(0, 0);
+}
+function unmark() {
+  const line = lineOf(), st = stOf(line), cur = currentRecord(line, st.opt, view.set);
+  if (cur && cur.status === 'done') { saveLog({ ...cur, status: 'draft', doneAt: null, updatedAt: now() }); toast('Conclusão removida; valores mantidos como rascunho.'); render(); }
+}
+
+function warmupHtml(line) {
+  const g = P.general.sections[0].items, w = line.warm;
+  if (w === '0') return '<p>Sem aquecimento: o músculo já foi aquecido por um exercício anterior do mesmo dia.</p>';
+  const nums = w.includes('-') ? w.split('-').map(Number).filter(Boolean) : [Number(w)];
+  const plural = n => n === 1 ? '1 série' : `${n} séries`;
+  const items = nums.map(n => g.find(i => i.label === plural(n))).filter(Boolean);
+  return `<p><b>${esc(w)} ${w === '1' ? 'série' : 'séries'} de aquecimento.</b></p>` + items.map(i => `<p>${esc(i.label)}: ${esc(i.text)}</p>`).join('') +
+    `<p>${esc(g.find(i => i.label === 'Descanso do aquecimento')?.text || '')}</p>`;
+}
+
+function render() {
+  const w = wo(), line = lineOf(), st = stOf(line), n = L.totalSets(line, st);
+  if (view.set > n) view.set = n;
+  const pr = L.progress(w, logs, states, P.id);
+  const opts = (arr, sel) => arr.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(sel) ? ' selected' : ''}>${esc(t)}</option>`).join('');
+  const lineItems = w.lines.map((l, i) => {
+    const lp = L.lineProgress(l, logs, states, P.id), o = L.lineState(states, P.id, l).opt;
+    return [l.id, `${i + 1}. ${exName(l, o)} · ${lp.done}/${lp.total}${lp.done === lp.total ? ' ✓' : ''}${l.ss ? ' ⇄' : ''}`];
+  });
+  $('top').innerHTML =
+    `<select id="selWeek" aria-label="Semana">${opts(P.weeks.map(x => [x.n, 'Sem. ' + x.n]), view.week)}</select>` +
+    `<select id="selType" aria-label="Treino">${opts(L.WORKOUT_ORDER.map(t => [t, t]), view.type)}</select>` +
+    `<div class="prog${pr.done === pr.total ? ' full' : ''}" aria-label="Séries concluídas">${pr.done}/${pr.total}</div>` +
+    `<button class="menu" data-act="menu" aria-label="Menu">☰</button>` +
+    `<select class="exsel" id="selLine" aria-label="Exercícios do dia">${opts(lineItems, line.id)}</select>`;
+
+  // banners
+  let b = '';
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  if (!standalone && !meta.hideInstall) b += `<div class="banner info"><span>Para os dados ficarem seguros, adicione à Tela de Início e use sempre pelo ícone. Aberto no Safari, os dados ficam separados.</span><button data-act="hideInstall">Entendi</button></div>`;
+  if (!store.available) b += `<div class="banner"><span>Este navegador não deixou guardar dados. Os registros se perdem ao fechar. Faça backup.</span></div>`;
+  const lb = meta.lastBackup, dc = doneCount();
+  if (dc > 0 && (!lb ? dc >= 12 : dc > lb.count && Date.now() - Date.parse(lb.at) > 7 * 864e5))
+    b += `<div class="banner"><span>${lb ? 'Há registros novos há mais de 7 dias sem backup.' : 'Você ainda não fez backup.'}</span><button data-act="backup">Fazer backup</button></div>`;
+  $('banners').innerHTML = b;
+
+  const opt = st.opt, ex = line.options[opt], cur = currentRecord(line, opt, view.set);
+  const isDone = cur && cur.status === 'done' && !cur.deleted;
+  const last = L.isLastSet(line, st, view.set);
+  const rpeLabel = `RPE ${view.set}`, rpeVal = L.rpeFor(line, st, view.set);
+  const other = line.options.some((_, o) => o !== opt && L.doneInOption(logs, P.id, line, o, view.set));
+  const setsHtml = Array.from({ length: n }, (_, i) => {
+    const s = i + 1, d = L.doneInOption(logs, P.id, line, opt, s), od = !d && L.positionDone(logs, P.id, line, s);
+    return `<button data-act="set" data-set="${s}" class="${d ? 'done ' : ''}${od ? 'other ' : ''}${s === view.set ? 'sel' : ''}" aria-label="Série ${s}${d ? ' concluída' : ''}">${s}${L.isOptionalSet(line, s) ? '<small>opcional</small>' : ''}</button>`;
+  }).join('');
+
+  // campos
+  const sug = !cur || cur.deleted ? L.suggestedLoad(P, logs, view.week, view.type, line, opt, view.set) : null;
+  const loadVal = cur && !cur.deleted ? L.fmtNum(cur.load) : '';
+  const valVal = cur && !cur.deleted ? L.fmtNum(cur.value) : '';
+  const cmp = L.comparison(P, logs, view.week, view.type, ex.ex, view.set);
+  let cmpHtml;
+  if (cmp.kind === 'prev') cmpHtml = `<div class="cmp"><button data-act="copy" data-load="${cmp.rec.load ?? ''}">Sem. ${cmp.week}: <b>${esc(L.fmtResult(cmp.rec))}</b></button></div>`;
+  else if (cmp.kind === 'earlier') cmpHtml = `<div class="cmp none">Sem registro na semana ${view.week - 1}.<span class="sub"><button data-act="copy" data-load="${cmp.rec.load ?? ''}">Última vez, sem. ${cmp.week}: <b>${esc(L.fmtResult(cmp.rec))}</b></button></span></div>`;
+  else cmpHtml = `<div class="cmp none">${view.week > 1 ? `Sem registro na semana ${view.week - 1}.` : 'Primeira semana: sem registro anterior.'}</div>`;
+
+  // opcional
+  let optHtml = '';
+  if (line.opt) {
+    const hist = [view.week - 2, view.week - 1].filter(x => x >= 1).map(wk => {
+      const rs = L.weekResults(P, logs, wk, view.type, ex.ex);
+      return `Sem. ${wk}: ${rs.length ? esc(rs.map(L.fmtResult).join(', ')) : 'sem registro'}`;
+    }).join(' · ');
+    optHtml = `<div class="optbox"><label><input type="checkbox" data-act="optional" ${st.optionalOn ? 'checked' : ''}> Adicionar série opcional</label>` +
+      `<p>Só se o exercício progrediu (carga ou repetições) nas 2 semanas anteriores e a recuperação está boa. ${hist}</p></div>`;
+  }
+
+  // observações
+  const partner = L.partnerOf(w, line);
+  const techItem = P.general.sections[1].items.find(i => i.label === line.tech);
+  let notes = `<h3>Aquecimento</h3>${warmupHtml(line)}`;
+  if (line.tech && line.tech !== 'N/A') notes += `<h3>Técnica da última série</h3><div class="${last ? 'hl' : ''}"><p><b>${esc(line.tech)}</b></p><p>${esc(techItem?.text || '')}</p></div>`;
+  if (partner) notes += `<h3>Supersérie</h3><p>Com <b>${esc(exName(partner, L.lineState(states, P.id, partner).opt))}</b>. Descanso: ${esc(line.rest)}.</p>`;
+  notes += `<h3>Orientações${opt ? ` (escritas para ${esc(exName(line, 0))})` : ''}</h3><p>${esc(line.notes)}</p>`;
+  notes += `<h3>Vídeo</h3><a href="${esc(ex.url)}" target="_blank" rel="noopener">${ex.link === 'search' ? 'Buscar no YouTube' : 'Ver vídeo'}: ${esc(exName(line, opt))}</a>`;
+  notes += `<button class="linkbtn" data-act="general">Orientações gerais do programa</button>`;
+
+  const altTag = opt ? `<div class="tag alt">Alternativa selecionada. A prescrição e as orientações são da linha original (${esc(exName(line, 0))}).</div>` : '';
+  const otherTag = other ? `<div class="tag">Esta série já foi registrada em outra opção desta linha.</div>` : '';
+  const unit = line.unit === 's' ? 'Segundos' : 'Reps feitas';
+  const rpeShow = rpeVal || '—';
+  $('card').innerHTML =
+    `<select class="exname" id="selOpt" aria-label="Exercício">${line.options.map((o, i) => `<option value="${i}"${i === opt ? ' selected' : ''}>${esc(exName(line, i))}${i ? ` (alt. ${i})` : ''}</option>`).join('')}</select>` +
+    altTag +
+    `<div class="stats"><div class="stat"><b>Reps</b><span>${esc(line.reps)}</span></div><div class="stat"><b>Rest</b><span class="small">${esc(line.rest)}</span></div><div class="stat"><b>${rpeLabel}</b><span>${esc(rpeShow)}</span></div></div>` +
+    `<div class="sets">${setsHtml}</div>` + otherTag +
+    `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="${sug == null ? 'PC' : ''}" value="${esc(loadVal !== '' ? loadVal : L.fmtNum(sug))}" class="${sug != null && loadVal === '' ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
+    `<div class="field" id="valf"><label for="val">${unit}</label><input id="val" inputmode="numeric" autocomplete="off" value="${esc(valVal)}"></div></div>` +
+    `<div class="steps"><button data-act="adj" data-d="-2.5">−2,5</button><button data-act="adj" data-d="-1">−1</button><button data-act="adj" data-d="1">+1</button><button data-act="adj" data-d="2.5">+2,5</button></div>` +
+    cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') + optHtml +
+    `<section class="notes">${notes}</section>`;
+
+  const seq = L.sequence(w, states, P.id);
+  const idx = seq.findIndex(s => s.lineId === line.id && s.set === view.set);
+  const nxt = !isDone ? L.nextPending(w, logs, states, P.id, { lineId: line.id, set: view.set }) : null;
+  const nxtLine = nxt && L.getLine(w, nxt.lineId);
+  const sub = nxtLine ? (nxtLine.id !== line.id ? `→ ${esc(exName(nxtLine, L.lineState(states, P.id, nxtLine).opt))}` : `→ série ${nxt.set}`) : '';
+  const rt = L.resumeTarget(P, logs, states, meta.position);
+  const away = meta.position && !(rt.week === view.week && rt.type === view.type && rt.step && rt.step.lineId === view.lineId && rt.step.set === view.set);
+  $('bar').innerHTML = `<div class="in">` +
+    `<button class="nav" data-act="prev" ${idx <= 0 ? 'disabled' : ''} aria-label="Anterior">‹</button>` +
+    `<button class="reg" data-act="register">${isDone ? 'Salvar alteração' : 'Registrar série e avançar'}${sub ? `<small>${sub}</small>` : ''}</button>` +
+    `<button class="nav" data-act="next" ${idx >= seq.length - 1 ? 'disabled' : ''} aria-label="Próxima">›</button>` +
+    (away && rt.step ? `<button class="back" data-act="current">Voltar para a série atual</button>` : '') + `</div>`;
+
+  if (focusValue) { focusValue = false; try { $('val').focus(); } catch { } }
+}
+
+function sheet(html) { const d = $('sheet'); d.innerHTML = html + `<button class="close" data-act="closeSheet">Fechar</button>`; if (!d.open) d.showModal(); }
+
+function menuSheet() {
+  const lb = meta.lastBackup;
+  sheet(`<h2>Menu</h2>` +
+    `<button class="item" data-act="general">Orientações gerais do programa</button>` +
+    `<button class="item" data-act="backup">Fazer backup<small>${lb ? `Último: ${new Date(lb.at).toLocaleString('pt-BR')} (${lb.count} séries)` : 'Nenhum backup feito ainda'}</small></button>` +
+    `<button class="item" data-act="restore">Restaurar backup<small>Junta com os registros atuais; vale o mais recente.</small></button>` +
+    `<button class="item" data-act="csv">Exportar CSV<small>${doneCount()} séries concluídas</small></button>` +
+    `<h3>Dados</h3><p>${doneCount()} séries concluídas neste aparelho. Armazenamento ${store.persistent ? 'protegido pelo navegador' : 'padrão do navegador (faça backup)'}.</p>` +
+    `<p>Programa: ${esc(P.sourceFile)} · ${esc(P.id)}</p>`);
+}
+function generalSheet() {
+  const g = P.general;
+  sheet(`<h2>Orientações gerais</h2><p>${esc(g.notes)}</p>` + g.sections.map(s => `<h3>${esc(s.title)}</h3><dl>${s.items.map(i => `<dt>${esc(i.label)}</dt><dd>${esc(i.text)}</dd>`).join('')}</dl>`).join('') +
+    P.blocks.map(b => `<h3>${esc(b.title)}</h3><p>${esc(b.text)}</p>`).join(''));
+}
+
+async function deliver(name, mime, text) {
+  const file = new File([text], name, { type: mime });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return true; } } catch (e) { if (e && e.name === 'AbortError') return false; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000); return true;
+}
+async function backup() {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  const data = { format: 'lcs-workout-backup', version: 1, createdAt: now(), programs: [{ id: P.id, name: P.name, sourceFile: P.sourceFile, sha256: P.sha256 }],
+    logs: Object.values(logs), states: Object.entries(states).map(([key, v]) => ({ key, ...v })), position: meta.position || null };
+  if (await deliver(`treino-backup-${stamp}.json`, 'application/json', JSON.stringify(data))) { await setMeta('lastBackup', { at: now(), count: doneCount() }); toast('Backup gerado.'); render(); }
+}
+async function restoreFile(file) {
+  let obj; try { obj = JSON.parse(await file.text()); } catch { obj = null; }
+  const err = L.validateBackup(obj);
+  if (err) { sheet(`<h2>Restaurar backup</h2><div class="msg bad">${esc(err)} Nada foi alterado.</div>`); return; }
+  const m = L.mergeLogs(logs, obj.logs);
+  logs = m.logs; await store.putMany('logs', Object.entries(logs));
+  const sts = (obj.states || []).filter(s => !states[s.key]);
+  for (const s of sts) { const { key, ...v } = s; states[key] = v; }
+  await store.putMany('states', Object.entries(states));
+  if (!meta.position && obj.position) await setMeta('position', obj.position);
+  sheet(`<h2>Backup restaurado</h2><div class="msg">${m.added} registros novos, ${m.updated} atualizados, ${m.ignored} já estavam iguais ou mais recentes.</div>`);
+  const t = L.resumeTarget(P, logs, states, meta.position);
+  if (t.step) { view.week = t.week; view.type = t.type; view.lineId = t.step.lineId; view.set = t.step.set; }
+  render();
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, line = view && lineOf && wo() ? lineOf() : null;
+  switch (a) {
+    case 'register': register(); break;
+    case 'prev': move(-1); break;
+    case 'next': move(1); break;
+    case 'set': view.set = Number(el.dataset.set); render(); break;
+    case 'unmark': unmark(); break;
+    case 'undo': { const u = undo; $('toast').classList.remove('show'); undo = null; u && u(); break; }
+    case 'menu': menuSheet(); break;
+    case 'general': generalSheet(); break;
+    case 'closeSheet': $('sheet').close(); break;
+    case 'hideInstall': setMeta('hideInstall', true); render(); break;
+    case 'backup': backup(); break;
+    case 'restore': $('file').value = ''; $('file').click(); break;
+    case 'csv': deliver(`treino-registros-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv', L.toCsv(logs)); break;
+    case 'current': { const t = L.resumeTarget(P, logs, states, meta.position); if (t.step) go(t.week, t.type, t.step.lineId, t.step.set); break; }
+    case 'copy': { const l = el.dataset.load; if (l !== '') { const f = $('load'); f.value = L.fmtNum(Number(l)); f.classList.remove('sug'); saveDraft(); } break; }
+    case 'adj': {
+      const f = $('load'), base = L.parseNum(f.value) ?? L.parseNum(f.dataset.sug) ?? 0, d = Number(el.dataset.d);
+      f.value = L.fmtNum(Math.max(0, Math.round((base + d) * 100) / 100)); f.classList.remove('sug'); saveDraft(); break;
+    }
+    case 'optional': {
+      const k = L.stateKey(P.id, line.id), cur = states[k] || { opt: 0, optionalOn: false };
+      states[k] = { ...cur, optionalOn: el.checked }; persistState(line);
+      if (!el.checked && view.set > line.sets) view.set = line.sets;
+      else if (el.checked) view.set = line.sets + 1;
+      render(); break;
+    }
+  }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'selWeek') go(Number(t.value), view.type);
+  else if (t.id === 'selType') go(view.week, t.value);
+  else if (t.id === 'selLine') goLine(t.value);
+  else if (t.id === 'selOpt') {
+    const line = lineOf(), k = L.stateKey(P.id, line.id);
+    states[k] = { ...(states[k] || { optionalOn: false }), opt: Number(t.value) }; persistState(line); render();
+  } else if (t.id === 'file' && t.files[0]) restoreFile(t.files[0]);
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'load' || t.id === 'val') {
+    if (t.id === 'load') t.classList.remove('sug');
+    t.parentElement.classList.remove('err'); saveDraft();
+  }
+});
+document.addEventListener('focusin', e => { if (e.target.id === 'load' && e.target.classList.contains('sug')) e.target.select(); });
+
+init().catch(err => { document.body.insertAdjacentHTML('afterbegin', `<div class="banner">Erro ao iniciar: ${esc(err.message)}</div>`); console.error(err); });
