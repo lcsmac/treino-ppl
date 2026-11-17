@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Converte a aba PPL da planilha em app/program.json e imprime o relatório de conferência.
-Uso: python3 tools/convert.py planilha.xlsx app/program.json"""
+"""Converte a aba PPL da planilha em docs/program.json e imprime o relatório de conferência.
+Uso: python3 tools/convert.py planilha.xlsx docs/program.json"""
 import sys, re, json, hashlib, unicodedata, collections, datetime
 import openpyxl
 

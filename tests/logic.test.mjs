@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import * as L from '../app/logic.js';
+import * as L from '../docs/logic.js';
 
-const P = JSON.parse(readFileSync(new URL('../app/program.json', import.meta.url)));
+const P = JSON.parse(readFileSync(new URL('../docs/program.json', import.meta.url)));
 const pid = P.id;
 const wo = (w, t) => L.getWorkout(P, w, t);
 const name = (line, o = 0) => P.exercises[line.options[o].ex];
