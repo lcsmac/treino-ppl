@@ -107,7 +107,7 @@ function register() {
   if (wasDone) { toast('Alteração salva.'); render(); return; }
   setMeta('position', { week: view.week, type: view.type, lineId: line.id, set });
   const next = L.nextPending(wo(), logs, states, P.id, { lineId: line.id, set });
-  if (next) { view.lineId = next.lineId; view.set = next.set; focusValue = true; toast(`Série ${set} registrada`); }
+  if (next) { view.lineId = next.lineId; view.set = next.set; focusValue = true; }
   else toast('Treino concluído!');
   render(); scrollTo(0, 0);
 }
