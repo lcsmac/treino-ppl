@@ -184,7 +184,7 @@ function render() {
   else prevLine = `<span class="sub">${view.week > 1 ? `Sem registro na semana ${view.week - 1}.` : 'Sem semana anterior neste programa'}</span>`;
   const lg = L.lastInGym(logs, ex.ex, view.set, gid, L.logId(P.id, line.id, opt, view.set));
   const sameAsPrev = lg && cmp.rec && lg.id === cmp.rec.id;
-  const gymLine = lg ? btn(`Última nesta academia (${esc(gymName(gid))}), sem. ${lg.week}${lg.set !== view.set ? ', série ' + lg.set : ''}`, lg) : `<span class="sub">Nenhum registro deste exercício em ${esc(gymName(gid))}.</span>`;
+  const gymLine = lg ? btn(`Última vez na ${esc(gymName(gid))} · sem. ${lg.week} · série ${lg.set}${lg.set !== view.set ? ' (sem a série ' + view.set + ')' : ''}`, lg) : `<span class="sub">Nenhum registro deste exercício na ${esc(gymName(gid))}.</span>`;
   const cmpHtml = `<div class="cmp${cmp.rec || lg ? '' : ' none'}"><strong>Comparação · série ${view.set}</strong>${prevLine}${sameAsPrev ? '' : gymLine}${sameAsPrev ? `<span class="sub">É também a última nesta academia.</span>` : ''}</div>`;
 
   let optHtml = '';

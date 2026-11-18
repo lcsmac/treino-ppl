@@ -220,3 +220,15 @@ test('G2 carga sugerida prefere a academia selecionada; CSV traz a academia', ()
   const csv = L.toCsv(logs, [{ id: 'g1x', name: 'Smart Fit' }, { id: 'g9', name: 'Bluefit' }]);
   assert.match(csv, /Smart Fit/); assert.match(csv, /Bluefit/); assert.match(csv.split('\r\n')[0], /;academia;id$/);
 });
+
+test('G3 última na academia: série correspondente da sessão mais recente; senão, a última feita', () => {
+  const logs = {}, a = byName(2, 'Push A', 'Pec Deck'), b = byName(3, 'Push A', 'Pec Deck');
+  const ex = a.options[0].ex, none = 'x';
+  const r1 = rec(logs, 2, 'Push A', a, 0, 1, 50, 10); r1.doneAt = '2026-01-01T10:00:00Z';
+  const r2 = rec(logs, 2, 'Push A', a, 0, 2, 52, 10); r2.doneAt = '2026-01-01T10:05:00Z';
+  const r3 = rec(logs, 3, 'Push A', b, 0, 1, 55, 9); r3.doneAt = '2026-01-08T10:00:00Z';
+  assert.equal(L.lastInGym(logs, ex, 1, L.DEFAULT_GYM, none).load, 55);
+  assert.equal(L.lastInGym(logs, ex, 2, L.DEFAULT_GYM, none).load, 55); // sessão mais recente só tem a série 1
+  r3.set = 2; r3.id = 'y'; logs.y = r3; delete logs[L.logId(pid, b.id, 0, 1)];
+  assert.equal(L.lastInGym(logs, ex, 1, L.DEFAULT_GYM, none).set, 2);
+});

@@ -139,16 +139,15 @@ export const DEFAULT_GYM = 'g2';
 export const DEFAULT_GYMS = [{ id: 'g1', name: 'BT' }, { id: 'g2', name: 'BF' }, { id: 'g3', name: 'Ultra' }];
 export const gymOf = r => (r && r.gym) || DEFAULT_GYM;
 
-/** Última vez que o exercício foi feito na academia `gym` (qualquer semana), de preferência na mesma série. */
+/** Última vez que o exercício foi feito na academia `gym`: pega a sessão mais recente (semana + treino) e,
+ *  nela, a série de mesmo número; se não houver, a última série feita nessa sessão. */
 export function lastInGym(logs, exId, set, gym, excludeId) {
-  let best = null, bestSame = null;
-  for (const r of Object.values(logs)) {
-    if (!isDone(r) || r.exId !== exId || r.id === excludeId || gymOf(r) !== gym) continue;
-    const t = r.doneAt || r.updatedAt || '';
-    if (!best || t > (best.doneAt || best.updatedAt || '')) best = r;
-    if (r.set === set && (!bestSame || t > (bestSame.doneAt || bestSame.updatedAt || ''))) bestSame = r;
-  }
-  return bestSame || best;
+  const T = r => r.doneAt || r.updatedAt || '';
+  const rs = Object.values(logs).filter(r => isDone(r) && r.exId === exId && r.id !== excludeId && gymOf(r) === gym);
+  if (!rs.length) return null;
+  const latest = rs.reduce((a, r) => (T(r) > T(a) ? r : a));
+  const sess = rs.filter(r => r.programId === latest.programId && r.week === latest.week && r.workout === latest.workout);
+  return sess.find(r => r.set === set) || sess.reduce((a, r) => (r.set > a.set ? r : a));
 }
 
 /** Carga sugerida: série anterior do mesmo exercício neste treino; senão, a da comparação. */
