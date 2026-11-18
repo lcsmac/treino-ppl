@@ -135,11 +135,30 @@ export function comparison(program, logs, week, type, exId, set) {
   return { kind: 'none', week: week - 1, rec: null };
 }
 
+export const DEFAULT_GYM = 'g1';
+export const gymOf = r => (r && r.gym) || DEFAULT_GYM;
+
+/** Última vez que o exercício foi feito na academia `gym` (qualquer semana), de preferência na mesma série. */
+export function lastInGym(logs, exId, set, gym, excludeId) {
+  let best = null, bestSame = null;
+  for (const r of Object.values(logs)) {
+    if (!isDone(r) || r.exId !== exId || r.id === excludeId || gymOf(r) !== gym) continue;
+    const t = r.doneAt || r.updatedAt || '';
+    if (!best || t > (best.doneAt || best.updatedAt || '')) best = r;
+    if (r.set === set && (!bestSame || t > (bestSame.doneAt || bestSame.updatedAt || ''))) bestSame = r;
+  }
+  return bestSame || best;
+}
+
 /** Carga sugerida: série anterior do mesmo exercício neste treino; senão, a da comparação. */
-export function suggestedLoad(program, logs, week, type, line, opt, set) {
+export function suggestedLoad(program, logs, week, type, line, opt, set, gym) {
   for (let s = set - 1; s >= 1; s--) {
     const r = logs[logId(program.id, line.id, opt, s)];
     if (isDone(r) && r.load != null) return r.load;
+  }
+  if (gym) {
+    const g = lastInGym(logs, line.options[opt].ex, set, gym, logId(program.id, line.id, opt, set));
+    if (g && g.load != null) return g.load;
   }
   const c = comparison(program, logs, week, type, line.options[opt].ex, set);
   return c.rec && c.rec.load != null ? c.rec.load : null;
@@ -190,13 +209,14 @@ export function validateBackup(obj) {
   return null;
 }
 
-export function toCsv(logs) {
-  const head = ['programa', 'semana', 'treino', 'posicao', 'exercicio_original', 'exercicio_realizado', 'opcao', 'serie', 'opcional', 'carga_kg', 'valor', 'unidade', 'concluida_em', 'alterada_em', 'id'];
+export function toCsv(logs, gyms = []) {
+  const gymName = id => (gyms.find(g => g.id === id) || {}).name || (id === DEFAULT_GYM ? 'Academia 1' : id);
+  const head = ['programa', 'semana', 'treino', 'posicao', 'exercicio_original', 'exercicio_realizado', 'opcao', 'serie', 'opcional', 'carga_kg', 'valor', 'unidade', 'concluida_em', 'alterada_em', 'academia', 'id'];
   const rows = Object.values(logs).filter(isDone).sort((a, b) =>
     a.programId.localeCompare(b.programId) || a.week - b.week || WORKOUT_ORDER.indexOf(a.workout) - WORKOUT_ORDER.indexOf(b.workout) || a.pos - b.pos || a.set - b.set || a.opt - b.opt);
   const q = v => { const s = v == null ? '' : String(v); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const optName = ['principal', 'alternativa 1', 'alternativa 2'];
   const lines = rows.map(r => [r.programId, r.week, r.workout, r.pos, r.origName, r.exName, optName[r.opt], r.set, r.optional ? 'sim' : 'não',
-    fmtNum(r.load), fmtNum(r.value), r.unit === 's' ? 'segundos' : 'repetições', r.doneAt, r.updatedAt, r.id].map(q).join(';'));
+    fmtNum(r.load), fmtNum(r.value), r.unit === 's' ? 'segundos' : 'repetições', r.doneAt, r.updatedAt, gymName(gymOf(r)), r.id].map(q).join(';'));
   return '﻿' + [head.join(';'), ...lines].join('\r\n') + '\r\n';
 }

@@ -6,6 +6,9 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const ROLE = ['Principal', 'Alternativa 1', 'Alternativa 2'];
 let P, logs = {}, states = {}, meta = {}, view = null, undo = null, toastTimer = null, focusValue = false;
 
+const gyms = () => (meta.gyms && meta.gyms.length ? meta.gyms : [{ id: L.DEFAULT_GYM, name: 'Academia 1' }]);
+const curGym = () => { const g = gyms(); return g.some(x => x.id === meta.gym) ? meta.gym : g[0].id; };
+const gymName = id => (gyms().find(g => g.id === id) || { name: 'Outra academia' }).name;
 const now = () => new Date().toISOString();
 const wo = () => L.getWorkout(P, view.week, view.type);
 const lineOf = () => L.getLine(wo(), view.lineId);
@@ -75,7 +78,7 @@ function readFields() {
 function baseRecord(line, opt, set) {
   return {
     id: L.logId(P.id, line.id, opt, set), programId: P.id, week: view.week, workout: view.type, lineId: line.id, pos: line.pos,
-    opt, exId: line.options[opt].ex, exName: exName(line, opt), origName: exName(line, 0), set, optional: L.isOptionalSet(line, set),
+    opt, gym: curGym(), exId: line.options[opt].ex, exName: exName(line, opt), origName: exName(line, 0), set, optional: L.isOptionalSet(line, set),
     load: null, value: null, unit: line.unit, status: 'draft', doneAt: null, updatedAt: now(), deleted: false, pass: 1
   };
 }
@@ -139,8 +142,9 @@ function render() {
   });
   $('top').innerHTML =
     `<div class="head"><h1>Meu treino · PPL</h1><span class="prog${pr.done === pr.total ? ' full' : ''}" aria-label="Séries concluídas">${pr.done}/${pr.total} séries</span><button class="menu" data-act="menu" aria-label="Menu">☰</button></div>` +
-    `<div class="row2"><select id="selWeek" aria-label="Semana">${opts(P.weeks.map(x => [x.n, 'Semana ' + x.n]), view.week)}</select>` +
-    `<select id="selType" aria-label="Treino">${opts(L.WORKOUT_ORDER.map(t => [t, typeLabel[t] || t]), view.type)}</select></div>` +
+    `<div class="row2"><select id="selWeek" aria-label="Semana">${opts(P.weeks.map(x => [x.n, 'Sem. ' + x.n]), view.week)}</select>` +
+    `<select id="selType" aria-label="Treino">${opts(L.WORKOUT_ORDER.map(t => [t, typeLabel[t] || t]), view.type)}</select>` +
+    `<select id="selGym" aria-label="Academia">${opts([...gyms().map(g => [g.id, g.name]), ['__manage', 'Gerenciar academias…']], curGym())}</select></div>` +
     `<div class="bar"><i style="width:${pr.total ? Math.round(pr.done / pr.total * 100) : 0}%"></i></div>` +
     `<select class="exsel" id="selLine" aria-label="Exercícios do dia">${opts(lineItems, line.id)}</select>`;
 
@@ -163,15 +167,21 @@ function render() {
     return `<button data-act="set" data-set="${s}" class="${d ? 'done ' : ''}${od ? 'other ' : ''}${s === view.set ? 'sel' : ''}" aria-label="Série ${s}${d ? ' concluída' : ''}">${s}${L.isOptionalSet(line, s) ? '<small>opcional</small>' : ''}</button>`;
   }).join('');
 
-  const sug = !cur || cur.deleted ? L.suggestedLoad(P, logs, view.week, view.type, line, opt, view.set) : null;
+  const sug = !cur || cur.deleted ? L.suggestedLoad(P, logs, view.week, view.type, line, opt, view.set, curGym()) : null;
   const loadVal = cur && !cur.deleted ? L.fmtNum(cur.load) : '';
   const valVal = cur && !cur.deleted ? L.fmtNum(cur.value) : '';
   const cmp = L.comparison(P, logs, view.week, view.type, ex.ex, view.set);
-  const cmpHead = `<strong>Semana anterior · série ${view.set}</strong>`;
-  let cmpHtml;
-  if (cmp.kind === 'prev') cmpHtml = `<div class="cmp">${cmpHead}<button class="t" data-act="copy" data-load="${cmp.rec.load ?? ''}">Sem. ${cmp.week}: <b>${esc(L.fmtResult(cmp.rec))}</b></button></div>`;
-  else if (cmp.kind === 'earlier') cmpHtml = `<div class="cmp none">${cmpHead}<span class="t">Sem registro na semana ${view.week - 1}.</span><span class="sub"><button data-act="copy" data-load="${cmp.rec.load ?? ''}">Última vez, sem. ${cmp.week}: <b>${esc(L.fmtResult(cmp.rec))}</b></button></span></div>`;
-  else cmpHtml = `<div class="cmp none">${cmpHead}<span class="t">${view.week > 1 ? `Sem registro na semana ${view.week - 1}.` : 'Sem semana anterior neste programa'}</span></div>`;
+  const gid = curGym(), many = gyms().length > 1;
+  const gtag = r => many ? ` · ${esc(gymName(L.gymOf(r)))}` : '';
+  const btn = (label, r) => `<button class="t" data-act="copy" data-load="${r.load ?? ''}">${label}: <b>${esc(L.fmtResult(r))}</b></button>`;
+  let prevLine;
+  if (cmp.kind === 'prev') prevLine = btn(`Sem. ${cmp.week}${gtag(cmp.rec)}`, cmp.rec);
+  else if (cmp.kind === 'earlier') prevLine = `<span class="sub">Sem registro na semana ${view.week - 1}.</span>` + btn(`Última vez, sem. ${cmp.week}${gtag(cmp.rec)}`, cmp.rec);
+  else prevLine = `<span class="sub">${view.week > 1 ? `Sem registro na semana ${view.week - 1}.` : 'Sem semana anterior neste programa'}</span>`;
+  const lg = L.lastInGym(logs, ex.ex, view.set, gid, L.logId(P.id, line.id, opt, view.set));
+  const sameAsPrev = lg && cmp.rec && lg.id === cmp.rec.id;
+  const gymLine = lg ? btn(`Última nesta academia (${esc(gymName(gid))}), sem. ${lg.week}${lg.set !== view.set ? ', série ' + lg.set : ''}`, lg) : `<span class="sub">Nenhum registro deste exercício em ${esc(gymName(gid))}.</span>`;
+  const cmpHtml = `<div class="cmp${cmp.rec || lg ? '' : ' none'}"><strong>Comparação · série ${view.set}</strong>${prevLine}${sameAsPrev ? '' : gymLine}${sameAsPrev ? `<span class="sub">É também a última nesta academia.</span>` : ''}</div>`;
 
   let optHtml = '';
   if (line.opt) {
@@ -235,12 +245,20 @@ function menuSheet() {
   sheet(`<h2>Menu</h2>` +
     `<button class="item" data-act="general">Orientações gerais do programa</button>` +
     (P.changes && P.changes.length ? `<button class="item" data-act="changes">Alterações em relação à planilha<small>${P.changes.length} ajustes pedidos por você</small></button>` : '') +
+    `<button class="item" data-act="gyms">Academias<small>${gyms().map(g => esc(g.name)).join(' · ')}</small></button>` +
     `<button class="item" data-act="backup">Fazer backup<small>${lb ? `Último: ${new Date(lb.at).toLocaleString('pt-BR')} (${lb.count} séries)` : 'Nenhum backup feito ainda'}</small></button>` +
     `<button class="item" data-act="restore">Restaurar backup<small>Junta com os registros atuais; vale o mais recente.</small></button>` +
     `<button class="item" data-act="csv">Exportar CSV<small>${doneCount()} séries concluídas</small></button>` +
     `<h3>Dados</h3><p>${doneCount()} séries concluídas neste aparelho. Armazenamento ${store.persistent ? 'protegido pelo navegador' : 'padrão do navegador (faça backup)'}.</p>` +
     `<p>Programa: ${esc(P.sourceFile)} · ${esc(P.id)}</p>`);
 }
+function gymsSheet() {
+  sheet(`<h2>Academias</h2><p>Cada série registrada guarda a academia escolhida no topo. A comparação mostra a última vez na academia selecionada.</p>` +
+    gyms().map(g => `<div class="gymrow"><input data-gym="${esc(g.id)}" value="${esc(g.name)}" maxlength="30" aria-label="Nome da academia"><button data-act="gymSave" data-id="${esc(g.id)}">Salvar</button></div>`).join('') +
+    `<h3>Nova academia</h3><div class="gymrow"><input id="newGym" maxlength="30" placeholder="Nome" aria-label="Nova academia"><button data-act="gymAdd">Adicionar</button></div>` +
+    `<p>Registros feitos antes desta função ficam na primeira academia da lista.</p>`);
+}
+async function saveGyms(list, cur) { await setMeta('gyms', list); if (cur) await setMeta('gym', cur); }
 function generalSheet() {
   const g = P.general;
   const lines = g.notes.split('\n').map(x => x.trim()).filter(Boolean);
@@ -262,7 +280,7 @@ async function deliver(name, mime, text) {
 async function backup() {
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   const data = { format: 'lcs-workout-backup', version: 1, createdAt: now(), programs: [{ id: P.id, name: P.name, sourceFile: P.sourceFile, sha256: P.sha256 }],
-    logs: Object.values(logs), states: Object.entries(states).map(([key, v]) => ({ key, ...v })), position: meta.position || null };
+    logs: Object.values(logs), states: Object.entries(states).map(([key, v]) => ({ key, ...v })), position: meta.position || null, gyms: gyms(), gym: curGym() };
   if (await deliver(`treino-backup-${stamp}.json`, 'application/json', JSON.stringify(data))) { await setMeta('lastBackup', { at: now(), count: doneCount() }); toast('Backup gerado.'); render(); }
 }
 async function restoreFile(file) {
@@ -274,6 +292,10 @@ async function restoreFile(file) {
   const sts = (obj.states || []).filter(s => !states[s.key]);
   for (const s of sts) { const { key, ...v } = s; states[key] = v; }
   await store.putMany('states', Object.entries(states));
+  if (Array.isArray(obj.gyms)) {
+    const mine = gyms(), add = obj.gyms.filter(g => g && g.id && g.name && !mine.some(x => x.id === g.id));
+    if (add.length) await setMeta('gyms', [...mine, ...add]);
+  }
   if (!meta.position && obj.position) await setMeta('position', obj.position);
   sheet(`<h2>Backup restaurado</h2><div class="msg">${m.added} registros novos, ${m.updated} atualizados, ${m.ignored} já estavam iguais ou mais recentes.</div>`);
   const t = L.resumeTarget(P, logs, states, meta.position);
@@ -295,11 +317,23 @@ document.addEventListener('click', e => {
     case 'toggle': if (el.dataset.k === 'warm') openWarm = !openWarm; else openNotes = !openNotes; render(); break;
     case 'changes': sheet(`<h2>Alterações em relação à planilha</h2><ul class="topics">${P.changes.map(c => `<li>${esc(c)}</li>`).join('')}</ul><p>Os valores originais de cada linha alterada ficam guardados no programa.</p>`); break;
     case 'general': generalSheet(); break;
+    case 'gyms': gymsSheet(); break;
+    case 'gymSave': {
+      const inp = document.querySelector(`[data-gym="${CSS.escape(el.dataset.id)}"]`), name = inp.value.trim();
+      if (!name) { toast('Informe o nome.'); break; }
+      saveGyms(gyms().map(g => g.id === el.dataset.id ? { ...g, name } : g)).then(() => { gymsSheet(); render(); toast('Nome salvo.'); }); break;
+    }
+    case 'gymAdd': {
+      const name = $('newGym').value.trim();
+      if (!name) { toast('Informe o nome.'); break; }
+      const id = 'g' + Date.now().toString(36);
+      saveGyms([...gyms(), { id, name }], id).then(() => { gymsSheet(); render(); toast('Academia adicionada e selecionada.'); }); break;
+    }
     case 'closeSheet': $('sheet').close(); break;
     case 'hideInstall': setMeta('hideInstall', true); render(); break;
     case 'backup': backup(); break;
     case 'restore': $('file').value = ''; $('file').click(); break;
-    case 'csv': deliver(`treino-registros-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv', L.toCsv(logs)); break;
+    case 'csv': deliver(`treino-registros-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv', L.toCsv(logs, gyms())); break;
     case 'current': { const t = L.resumeTarget(P, logs, states, meta.position); if (t.step) go(t.week, t.type, t.step.lineId, t.step.set); break; }
     case 'copy': { const l = el.dataset.load; if (l !== '') { const f = $('load'); f.value = L.fmtNum(Number(l)); f.classList.remove('sug'); saveDraft(); } break; }
     case 'adj': {
@@ -320,6 +354,7 @@ document.addEventListener('change', e => {
   if (t.id === 'selWeek') go(Number(t.value), view.type);
   else if (t.id === 'selType') go(view.week, t.value);
   else if (t.id === 'selLine') goLine(t.value);
+  else if (t.id === 'selGym') { if (t.value === '__manage') { render(); gymsSheet(); } else setMeta('gym', t.value).then(render); }
   else if (t.id === 'selOpt') {
     const line = lineOf(), k = L.stateKey(P.id, line.id);
     states[k] = { ...(states[k] || { optionalOn: false }), opt: Number(t.value) }; persistState(line); render();

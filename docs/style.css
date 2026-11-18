@@ -13,8 +13,8 @@ button:disabled{opacity:.35}
 .head .prog{color:var(--dim);font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .head .prog.full{color:var(--ok)}
 .head .menu{width:48px;min-height:44px;padding:0;font-size:21px;border-radius:50%}
-.row2{display:grid;grid-template-columns:1.25fr 1.35fr;gap:10px}
-.row2 select{padding-right:30px;background-position:calc(100% - 16px) 22px,calc(100% - 10px) 22px}
+.row2{display:grid;grid-template-columns:.75fr 1.3fr 1fr;gap:6px}.gymrow{display:flex;gap:8px;margin:8px 0}.gymrow input{flex:1;min-width:0}
+.row2 select{padding:0 24px 0 10px;font-size:15px;background-position:calc(100% - 14px) 22px,calc(100% - 8px) 22px}
 .bar{height:8px;border-radius:6px;background:#2f3f4b;margin:16px 0}
 .bar i{display:block;height:100%;border-radius:6px;background:var(--acc);transition:width .2s}
 .banner{margin-bottom:10px;padding:10px 12px;border-radius:12px;background:#33290f;border:1px solid #6b5316;color:#ffe9a6;font-size:15px;display:flex;gap:10px;align-items:center}
@@ -88,3 +88,4 @@ dialog ul.topics li{margin:0 0 10px;padding:10px 12px;border-radius:14px;backgro
 dialog ul.topics b{color:var(--acc)}
 .msg{margin-top:10px;padding:10px 12px;border-radius:12px;background:#10283a;border:1px solid #1f5a7a}
 .msg.bad{background:#3a1414;border-color:#7a2525}
+.cmp button.t{display:block;margin-top:6px}.cmp button.t:first-of-type{margin-top:2px}
