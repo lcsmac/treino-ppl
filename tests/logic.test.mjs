@@ -57,6 +57,12 @@ test('R1/R6 rascunho não conta; posição conta uma vez', () => {
   assert.equal(L.progress(wo(2, 'Pull A'), logs, {}, pid).done, 1);
   assert.equal(L.doneInOption(logs, pid, l, 2, 1), false);
 });
+test('ordem da semana: Push, Pull, Legs e descanso no domingo', () => {
+  assert.deepEqual(L.WORKOUT_ORDER, ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B']);
+  assert.deepEqual(L.nextWorkout(P, 1, 'Legs B'), { week: 2, type: 'Push A' });
+  assert.deepEqual(L.nextWorkout(P, 1, 'Push A'), { week: 1, type: 'Pull A' });
+  assert.equal(L.WORKOUT_DAYS['Legs B'], 'Sáb'); assert.equal(Object.values(L.WORKOUT_DAYS).includes('Dom'), false);
+});
 test('R3 retomada na próxima série pendente', () => {
   const logs = {}, l = byName(2, 'Pull A', 'Neutral-Grip Lat Pulldown');
   rec(logs, 2, 'Pull A', l, 0, 1, 50, 10); rec(logs, 2, 'Pull A', l, 0, 2, 50, 9);
@@ -68,7 +74,7 @@ test('retomada vai para o treino seguinte quando o treino terminou', () => {
   for (const s of L.sequence(w, {}, pid)) rec(logs, 1, 'Legs B', L.getLine(w, s.lineId), 0, s.set, 10, 10);
   const last = w.lines.at(-1);
   const t = L.resumeTarget(P, logs, {}, { week: 1, type: 'Legs B', lineId: last.id, set: 2 });
-  assert.deepEqual([t.week, t.type], [2, 'Pull A']); assert.equal(t.step.set, 1);
+  assert.deepEqual([t.week, t.type], [2, 'Push A']); assert.equal(t.step.set, 1);
 });
 test('C1/C2 semana anterior e série sem par', () => {
   const logs = {}, l2 = byName(2, 'Pull A', 'Neutral-Grip Lat Pulldown'), l3 = byName(3, 'Pull A', 'Neutral-Grip Lat Pulldown'), l1 = byName(1, 'Pull A', 'Neutral-Grip Lat Pulldown');

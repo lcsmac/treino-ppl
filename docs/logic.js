@@ -1,6 +1,9 @@
 // Regras puras do aplicativo (sem tela e sem armazenamento). Testadas em tests/logic.test.mjs.
 
-export const WORKOUT_ORDER = ['Pull A', 'Push A', 'Legs A', 'Pull B', 'Push B', 'Legs B'];
+// Ordem de uso na semana (escolha do Lucas): Push, Pull, Legs, duas vezes, com descanso no domingo.
+// A prescrição de cada treino (exercícios, séries, notas) continua exatamente a da planilha.
+export const WORKOUT_ORDER = ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B'];
+export const WORKOUT_DAYS = { 'Push A': 'Seg', 'Pull A': 'Ter', 'Legs A': 'Qua', 'Push B': 'Qui', 'Pull B': 'Sex', 'Legs B': 'Sáb' };
 
 export function getWeek(program, n) { return program.weeks.find(w => w.n === n); }
 export function getWorkout(program, n, type) {

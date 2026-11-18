@@ -132,7 +132,7 @@ function render() {
   if (lastLine !== line.id) { openWarm = false; openNotes = false; lastLine = line.id; }
   const pr = L.progress(w, logs, states, P.id);
   const opts = (arr, sel) => arr.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(sel) ? ' selected' : ''}>${esc(t)}</option>`).join('');
-  const typeLabel = Object.fromEntries(P.weeks[0].workouts.map(x => [x.type, x.label]));
+  const typeLabel = Object.fromEntries(L.WORKOUT_ORDER.map(t => [t, `${t} (${L.WORKOUT_DAYS[t]})`]));
   const lineItems = w.lines.map((l, i) => {
     const lp = L.lineProgress(l, logs, states, P.id), o = L.lineState(states, P.id, l).opt;
     return [l.id, `${i + 1}. ${exName(l, o)} · ${lp.done}/${lp.total}${lp.done === lp.total ? ' ✓' : ''}${l.ss ? ' ⇄' : ''}`];
