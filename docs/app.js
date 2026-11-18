@@ -100,16 +100,15 @@ function register() {
   const value = L.parseNum(valueText), load = L.parseNum(loadText);
   if (value == null) { $('valf').classList.add('err'); $('val').focus(); toast(line.unit === 's' ? 'Informe os segundos.' : 'Informe as repetições.'); return; }
   if (loadText.trim() !== '' && load == null) { $('loadf').classList.add('err'); toast('Carga inválida.'); return; }
-  const prev = currentRecord(line, st.opt, set), prevPos = meta.position;
+  const prev = currentRecord(line, st.opt, set);
   const wasDone = prev && prev.status === 'done' && !prev.deleted;
   const rec = { ...(prev || baseRecord(line, st.opt, set)), load, value, deleted: false, status: 'done', updatedAt: now(), doneAt: wasDone ? prev.doneAt : now() };
   saveLog(rec);
   if (wasDone) { toast('Alteração salva.'); render(); return; }
   setMeta('position', { week: view.week, type: view.type, lineId: line.id, set });
   const next = L.nextPending(wo(), logs, states, P.id, { lineId: line.id, set });
-  const back = () => { prev ? saveLog(prev) : saveLog({ ...rec, status: 'draft', doneAt: null, updatedAt: now() }); setMeta('position', prevPos || null); view.lineId = line.id; view.set = set; render(); };
-  if (next) { view.lineId = next.lineId; view.set = next.set; focusValue = true; toast(`Série ${set} registrada`, back); }
-  else toast('Treino concluído!', back);
+  if (next) { view.lineId = next.lineId; view.set = next.set; focusValue = true; toast(`Série ${set} registrada`); }
+  else toast('Treino concluído!');
   render(); scrollTo(0, 0);
 }
 function unmark() {
