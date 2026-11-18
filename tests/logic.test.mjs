@@ -206,17 +206,17 @@ test('G1 academias: última na academia, registros antigos vão para a padrão',
   assert.equal(L.gymOf(r1), L.DEFAULT_GYM);
   const ex = a.options[0].ex, curId = L.logId(pid, b.id, 0, 1);
   assert.equal(L.lastInGym(logs, ex, 1, L.DEFAULT_GYM, curId).load, 50);
-  assert.equal(L.lastInGym(logs, ex, 1, 'g2', curId), null);
-  const r2 = rec(logs, 3, 'Push A', b, 0, 2, 40, 12); r2.gym = 'g2'; r2.doneAt = '2026-01-08T10:00:00Z';
-  assert.equal(L.lastInGym(logs, ex, 1, 'g2', curId).load, 40); // sem a mesma série, usa outra série
+  assert.equal(L.lastInGym(logs, ex, 1, 'g9', curId), null);
+  const r2 = rec(logs, 3, 'Push A', b, 0, 2, 40, 12); r2.gym = 'g9'; r2.doneAt = '2026-01-08T10:00:00Z';
+  assert.equal(L.lastInGym(logs, ex, 1, 'g9', curId).load, 40); // sem a mesma série, usa outra série
   assert.equal(L.lastInGym(logs, ex, 1, L.DEFAULT_GYM, curId).load, 50);
 });
 test('G2 carga sugerida prefere a academia selecionada; CSV traz a academia', () => {
   const logs = {}, a = byName(2, 'Push A', 'Pec Deck'), b = byName(4, 'Push A', 'Pec Deck');
-  const r1 = rec(logs, 2, 'Push A', a, 0, 1, 50, 10); r1.gym = 'g1';
-  const r2 = rec(logs, 3, 'Push A', byName(3, 'Push A', 'Pec Deck'), 0, 1, 35, 10); r2.gym = 'g2'; r2.doneAt = '2026-01-08T10:00:00Z';
-  assert.equal(L.suggestedLoad(P, logs, 4, 'Push A', b, 0, 1, 'g1'), 50);
-  assert.equal(L.suggestedLoad(P, logs, 4, 'Push A', b, 0, 1, 'g2'), 35);
-  const csv = L.toCsv(logs, [{ id: 'g1', name: 'Smart Fit' }, { id: 'g2', name: 'Bluefit' }]);
+  const r1 = rec(logs, 2, 'Push A', a, 0, 1, 50, 10); r1.gym = 'g1x';
+  const r2 = rec(logs, 3, 'Push A', byName(3, 'Push A', 'Pec Deck'), 0, 1, 35, 10); r2.gym = 'g9'; r2.doneAt = '2026-01-08T10:00:00Z';
+  assert.equal(L.suggestedLoad(P, logs, 4, 'Push A', b, 0, 1, 'g1x'), 50);
+  assert.equal(L.suggestedLoad(P, logs, 4, 'Push A', b, 0, 1, 'g9'), 35);
+  const csv = L.toCsv(logs, [{ id: 'g1x', name: 'Smart Fit' }, { id: 'g9', name: 'Bluefit' }]);
   assert.match(csv, /Smart Fit/); assert.match(csv, /Bluefit/); assert.match(csv.split('\r\n')[0], /;academia;id$/);
 });

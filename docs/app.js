@@ -7,7 +7,7 @@ const ROLE = ['Principal', 'Alternativa 1', 'Alternativa 2'];
 let P, logs = {}, states = {}, meta = {}, view = null, undo = null, toastTimer = null, focusValue = false;
 
 const gyms = () => (meta.gyms && meta.gyms.length ? meta.gyms : L.DEFAULT_GYMS);
-const curGym = () => { const g = gyms(); return g.some(x => x.id === meta.gym) ? meta.gym : g[0].id; };
+const curGym = () => { const g = gyms(); return g.some(x => x.id === meta.gym) ? meta.gym : (g.some(x => x.id === L.DEFAULT_GYM) ? L.DEFAULT_GYM : g[0].id); };
 const gymName = id => (gyms().find(g => g.id === id) || { name: 'Outra academia' }).name;
 const now = () => new Date().toISOString();
 const wo = () => L.getWorkout(P, view.week, view.type);
