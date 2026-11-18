@@ -209,7 +209,6 @@ function render() {
   $('card').innerHTML =
     `<section class="card">` +
     `<select class="exname" id="selOpt" aria-label="Exercício">${line.options.map((o, i) => `<option value="${i}"${i === opt ? ' selected' : ''}>${i === 0 ? 'Principal' : 'Alternativa ' + i}: ${esc(exName(line, i))}</option>`).join('')}</select>` +
-    altTag +
     `<div class="chips"><span class="chip">Reps<b>${esc(line.reps)}</b></span><span class="chip">Rest<b class="${line.rest.length > 10 ? 'sm' : ''}">${esc(line.rest)}</b></span><span class="chip">RPE ${view.set}<b>${esc(rpeVal || '—')}</b></span></div>` +
     `<div class="sets">${setsHtml}</div>` + otherTag +
     `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(loadVal !== '' ? loadVal : L.fmtNum(sug))}" class="${sug != null && loadVal === '' ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
@@ -223,7 +222,7 @@ function render() {
     `<button class="fold${openWarm ? ' open' : ''}" data-act="toggle" data-k="warm" aria-expanded="${openWarm}"><span>Aquecimento</span><i>▸</i></button>` +
     (openWarm ? `<div class="panel">${warm}</div>` : '') +
     `<button class="fold${openNotes ? ' open' : ''}" data-act="toggle" data-k="notes" aria-expanded="${openNotes}"><span>Observações e vídeo${hasTech && last ? '<span class="s">Técnica da última série</span>' : ''}</span><i>▸</i></button>` +
-    (openNotes ? `<div class="panel">${notes}</div>` : '');
+    (openNotes ? `<div class="panel">${altTag}${notes}</div>` : '');
   $('bar').innerHTML = '';
 
   if (focusValue) { focusValue = false; try { $('val').focus(); } catch { } }
