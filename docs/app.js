@@ -209,8 +209,6 @@ function render() {
   const warm = `<h3>Aquecimento</h3>${warmupHtml(line)}`.replace('<h3>Aquecimento</h3>', '');
 
   const altTag = opt ? `<div class="tag alt">Alternativa selecionada. A prescrição e as orientações são da linha original (${esc(exName(line, 0))}).</div>` : '';
-  const tm = techMark(line, st, view.set);
-  const techTag = tm ? `<div class="tag">${tm === 'LLP' ? '<b>Esta série é com LLP:</b> ao chegar à falha, continue com repetições parciais na metade alongada do movimento até não conseguir mais.' : '<b>Esta série é até a falha:</b> vá até não conseguir completar mais uma repetição com boa técnica.'}</div>` : '';
   const otherTag = other ? `<div class="tag">Esta série já foi registrada em outra opção desta linha.</div>` : '';
   const unit = line.unit === 's' ? 'Segundos' : 'Repetições';
 
@@ -225,7 +223,6 @@ function render() {
   $('card').innerHTML =
     `<section class="card">` +
     `<select class="exname" id="selOpt" aria-label="Exercício">${line.options.map((o, i) => `<option value="${i}"${i === opt ? ' selected' : ''}>${i === 0 ? 'Principal' : 'Alternativa ' + i}: ${esc(exName(line, i))}</option>`).join('')}</select>` +
-    techTag +
     `<div class="chips"><span class="chip">Reps<b>${esc(line.reps)}</b></span><span class="chip">Rest<b class="${line.rest.length > 10 ? 'sm' : ''}">${esc(line.rest)}</b></span><span class="chip">RPE ${view.set}<b>${esc(rpeVal || '—')}</b></span></div>` +
     `<div class="sets">${setsHtml}</div>` + otherTag +
     `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(loadVal !== '' ? loadVal : L.fmtNum(sug))}" class="${sug != null && loadVal === '' ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
