@@ -73,7 +73,8 @@ function currentRecord(line, opt, set) { return logs[L.logId(P.id, line.id, opt,
 function readFields() {
   const load = $('load'), val = $('val');
   const usedSug = load.dataset.sug && load.classList.contains('sug');
-  return { loadText: usedSug ? load.dataset.sug : load.value, valueText: val.value };
+  const pc = L.isPC(load.value);
+  return { loadText: usedSug ? load.dataset.sug : (pc ? '' : load.value), valueText: val.value };
 }
 function baseRecord(line, opt, set) {
   return {
@@ -85,7 +86,7 @@ function baseRecord(line, opt, set) {
 function saveDraft() {
   const line = lineOf(), st = stOf(line), cur = currentRecord(line, st.opt, view.set);
   const load = $('load'); if (load.classList.contains('sug') && document.activeElement === load) { /* usuário digitando */ }
-  const loadText = load.classList.contains('sug') ? '' : load.value, valueText = $('val').value;
+  const loadText = load.classList.contains('sug') || L.isPC(load.value) ? '' : load.value, valueText = $('val').value;
   const empty = loadText.trim() === '' && valueText.trim() === '';
   if (cur && cur.status === 'done') {
     saveLog({ ...cur, load: L.parseNum(loadText), value: L.parseNum(valueText), updatedAt: now() }); return;
@@ -225,7 +226,7 @@ function render() {
     `<select class="exname" id="selOpt" aria-label="Exercício">${line.options.map((o, i) => `<option value="${i}"${i === opt ? ' selected' : ''}>${i === 0 ? 'Principal' : 'Alternativa ' + i}: ${esc(exName(line, i))}</option>`).join('')}</select>` +
     `<div class="chips"><span class="chip">Reps<b>${esc(line.reps)}</b></span><span class="chip">Rest<b class="${line.rest.length > 10 ? 'sm' : ''}">${esc(line.rest)}</b></span><span class="chip">RPE ${view.set}<b>${esc(rpeVal || '—')}</b></span></div>` +
     `<div class="sets">${setsHtml}</div>` + otherTag +
-    `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(loadVal !== '' ? loadVal : L.fmtNum(sug))}" class="${sug != null && loadVal === '' ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
+    `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(loadVal !== '' ? loadVal : (sug != null ? L.fmtNum(sug) : (L.isBodyweight(ex.ex) ? 'PC' : '')))}" class="${loadVal === '' && (sug != null || L.isBodyweight(ex.ex)) ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
     `<div class="field" id="valf"><label for="val">${unit}</label><input id="val" inputmode="numeric" autocomplete="off" placeholder="—" value="${esc(valVal)}"></div></div>` +
     `<div class="steps"><button data-act="adj" data-d="-2.5">−2,5</button><button data-act="adj" data-d="-1">−1</button><button data-act="adj" data-d="1">+1</button><button data-act="adj" data-d="2.5">+2,5</button></div>` +
     cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') +

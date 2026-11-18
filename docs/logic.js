@@ -144,6 +144,12 @@ export function comparison(program, logs, week, type, exId, set) {
   return { kind: 'none', week: week - 1, rec: null };
 }
 
+/** Exercícios feitos com o peso do corpo (a carga já vem como "PC"; quem usa lastro digita o peso). */
+export const BODYWEIGHT = new Set(['hanging-leg-raise', 'roman-chair-leg-raise', 'long-lever-plank', 'nordic-ham-curl', 'reverse-nordic',
+  'sissy-squat', 'modified-candlestick', 'ab-wheel-rollout', 'swiss-ball-rollout', 'wide-grip-pull-up', 'neutral-grip-pull-up']);
+export const isBodyweight = exId => BODYWEIGHT.has(exId);
+export const isPC = t => /^\s*pc\s*$/i.test(String(t ?? ''));
+
 export const DEFAULT_GYM = 'g2';
 export const DEFAULT_GYMS = [{ id: 'g1', name: 'BT' }, { id: 'g2', name: 'BF' }, { id: 'g3', name: 'Ultra' }];
 export const gymOf = r => (r && r.gym) || DEFAULT_GYM;

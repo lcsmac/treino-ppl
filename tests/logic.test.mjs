@@ -234,3 +234,10 @@ test('G3 última na academia: série correspondente da sessão mais recente; sen
   r3.set = 2; r3.id = 'y'; logs.y = r3; delete logs[L.logId(pid, b.id, 0, 1)];
   assert.equal(L.lastInGym(logs, ex, 1, L.DEFAULT_GYM, none).set, 2);
 });
+
+test('PC: exercícios de peso corporal conhecidos e leitura do texto PC', () => {
+  const ids = new Set(P.weeks.flatMap(w => w.workouts.flatMap(x => x.lines.flatMap(l => l.options.map(o => o.ex)))));
+  for (const e of L.BODYWEIGHT) assert.ok(ids.has(e), e);
+  assert.ok(L.isBodyweight('hanging-leg-raise')); assert.ok(!L.isBodyweight('leg-press'));
+  assert.ok(L.isPC('PC') && L.isPC(' pc ') && !L.isPC('10') && !L.isPC(''));
+});
