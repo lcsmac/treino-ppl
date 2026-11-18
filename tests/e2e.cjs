@@ -4,11 +4,11 @@ const { chromium, devices } = require('playwright');
   const ctx = await b.newContext({ ...devices['iPhone 13'], locale: 'pt-BR', serviceWorkers: 'block' });
   const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
-  await p.goto('http://localhost:8765/'); await p.waitForSelector('.exname');
+  await p.goto('http://localhost:8767/'); await p.waitForSelector('.exname');
   const shot = n => p.screenshot({ path: `/tmp/claude-0/shots/${n}.png` });
   await shot('1-abertura');
   const txt = async s => (await p.locator(s).innerText()).replace(/\s+/g, ' ');
-  console.log('abertura:', await txt('#top .prog'), '|', await txt('.stats'), '|', await txt('.cmp'));
+  console.log('abertura:', await txt('#top .prog'), '|', await txt('.chips'), '|', await txt('.cmp'));
   // registra série 1 e 2 do primeiro exercício (semana 1 Pull A)
   await p.fill('#load', '40'); await p.fill('#val', '10'); await p.click('.reg');
   console.log('após registrar 1:', await txt('#top .prog'), '| sel:', await p.locator('.sets .sel').innerText());
@@ -27,7 +27,7 @@ const { chromium, devices } = require('playwright');
   // semana 4 opcional + supersérie
   await p.selectOption('#selWeek', '4'); await p.selectOption('#selType', 'Legs A');
   await p.selectOption('#selLine', { index: 2 }); await shot('3-superserie-opcional');
-  await p.check('.optbox input'); console.log('opcional ligada:', await p.locator('.sets button').count(), 'séries;', await txt('.stats'));
+  await p.check('.optbox input'); console.log('opcional ligada:', await p.locator('.sets button').count(), 'séries;', await txt('.chips'));
   await shot('4-opcional-ligada');
   await p.click('[data-act=menu]'); await p.waitForSelector('dialog[open]'); await shot('5-menu');
   console.log('erros:', errs.length ? errs : 'nenhum');

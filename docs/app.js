@@ -124,23 +124,26 @@ function warmupHtml(line) {
     `<p>${esc(g.find(i => i.label === 'Descanso do aquecimento')?.text || '')}</p>`;
 }
 
+let openWarm = false, openNotes = false, lastLine = null;
+
 function render() {
   const w = wo(), line = lineOf(), st = stOf(line), n = L.totalSets(line, st);
   if (view.set > n) view.set = n;
+  if (lastLine !== line.id) { openWarm = false; openNotes = false; lastLine = line.id; }
   const pr = L.progress(w, logs, states, P.id);
   const opts = (arr, sel) => arr.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(sel) ? ' selected' : ''}>${esc(t)}</option>`).join('');
+  const typeLabel = Object.fromEntries(P.weeks[0].workouts.map(x => [x.type, x.label]));
   const lineItems = w.lines.map((l, i) => {
     const lp = L.lineProgress(l, logs, states, P.id), o = L.lineState(states, P.id, l).opt;
     return [l.id, `${i + 1}. ${exName(l, o)} · ${lp.done}/${lp.total}${lp.done === lp.total ? ' ✓' : ''}${l.ss ? ' ⇄' : ''}`];
   });
   $('top').innerHTML =
-    `<select id="selWeek" aria-label="Semana">${opts(P.weeks.map(x => [x.n, 'Sem. ' + x.n]), view.week)}</select>` +
-    `<select id="selType" aria-label="Treino">${opts(L.WORKOUT_ORDER.map(t => [t, t]), view.type)}</select>` +
-    `<div class="prog${pr.done === pr.total ? ' full' : ''}" aria-label="Séries concluídas">${pr.done}/${pr.total}</div>` +
-    `<button class="menu" data-act="menu" aria-label="Menu">☰</button>` +
+    `<div class="head"><h1>Meu treino · PPL</h1><span class="prog${pr.done === pr.total ? ' full' : ''}" aria-label="Séries concluídas">${pr.done}/${pr.total} séries</span><button class="menu" data-act="menu" aria-label="Menu">☰</button></div>` +
+    `<div class="row2"><select id="selWeek" aria-label="Semana">${opts(P.weeks.map(x => [x.n, 'Semana ' + x.n]), view.week)}</select>` +
+    `<select id="selType" aria-label="Treino">${opts(L.WORKOUT_ORDER.map(t => [t, typeLabel[t] || t]), view.type)}</select></div>` +
+    `<div class="bar"><i style="width:${pr.total ? Math.round(pr.done / pr.total * 100) : 0}%"></i></div>` +
     `<select class="exsel" id="selLine" aria-label="Exercícios do dia">${opts(lineItems, line.id)}</select>`;
 
-  // banners
   let b = '';
   const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
   if (!standalone && !meta.hideInstall) b += `<div class="banner info"><span>Para os dados ficarem seguros, adicione à Tela de Início e use sempre pelo ícone. Aberto no Safari, os dados ficam separados.</span><button data-act="hideInstall">Entendi</button></div>`;
@@ -153,24 +156,23 @@ function render() {
   const opt = st.opt, ex = line.options[opt], cur = currentRecord(line, opt, view.set);
   const isDone = cur && cur.status === 'done' && !cur.deleted;
   const last = L.isLastSet(line, st, view.set);
-  const rpeLabel = `RPE ${view.set}`, rpeVal = L.rpeFor(line, st, view.set);
+  const rpeVal = L.rpeFor(line, st, view.set);
   const other = line.options.some((_, o) => o !== opt && L.doneInOption(logs, P.id, line, o, view.set));
   const setsHtml = Array.from({ length: n }, (_, i) => {
     const s = i + 1, d = L.doneInOption(logs, P.id, line, opt, s), od = !d && L.positionDone(logs, P.id, line, s);
     return `<button data-act="set" data-set="${s}" class="${d ? 'done ' : ''}${od ? 'other ' : ''}${s === view.set ? 'sel' : ''}" aria-label="Série ${s}${d ? ' concluída' : ''}">${s}${L.isOptionalSet(line, s) ? '<small>opcional</small>' : ''}</button>`;
   }).join('');
 
-  // campos
   const sug = !cur || cur.deleted ? L.suggestedLoad(P, logs, view.week, view.type, line, opt, view.set) : null;
   const loadVal = cur && !cur.deleted ? L.fmtNum(cur.load) : '';
   const valVal = cur && !cur.deleted ? L.fmtNum(cur.value) : '';
   const cmp = L.comparison(P, logs, view.week, view.type, ex.ex, view.set);
+  const cmpHead = `<strong>Semana anterior · série ${view.set}</strong>`;
   let cmpHtml;
-  if (cmp.kind === 'prev') cmpHtml = `<div class="cmp"><button data-act="copy" data-load="${cmp.rec.load ?? ''}">Sem. ${cmp.week}: <b>${esc(L.fmtResult(cmp.rec))}</b></button></div>`;
-  else if (cmp.kind === 'earlier') cmpHtml = `<div class="cmp none">Sem registro na semana ${view.week - 1}.<span class="sub"><button data-act="copy" data-load="${cmp.rec.load ?? ''}">Última vez, sem. ${cmp.week}: <b>${esc(L.fmtResult(cmp.rec))}</b></button></span></div>`;
-  else cmpHtml = `<div class="cmp none">${view.week > 1 ? `Sem registro na semana ${view.week - 1}.` : 'Primeira semana: sem registro anterior.'}</div>`;
+  if (cmp.kind === 'prev') cmpHtml = `<div class="cmp">${cmpHead}<button class="t" data-act="copy" data-load="${cmp.rec.load ?? ''}">Sem. ${cmp.week}: <b>${esc(L.fmtResult(cmp.rec))}</b></button></div>`;
+  else if (cmp.kind === 'earlier') cmpHtml = `<div class="cmp none">${cmpHead}<span class="t">Sem registro na semana ${view.week - 1}.</span><span class="sub"><button data-act="copy" data-load="${cmp.rec.load ?? ''}">Última vez, sem. ${cmp.week}: <b>${esc(L.fmtResult(cmp.rec))}</b></button></span></div>`;
+  else cmpHtml = `<div class="cmp none">${cmpHead}<span class="t">${view.week > 1 ? `Sem registro na semana ${view.week - 1}.` : 'Sem semana anterior neste programa'}</span></div>`;
 
-  // opcional
   let optHtml = '';
   if (line.opt) {
     const hist = [view.week - 2, view.week - 1].filter(x => x >= 1).map(wk => {
@@ -181,30 +183,20 @@ function render() {
       `<p>Só se o exercício progrediu (carga ou repetições) nas 2 semanas anteriores e a recuperação está boa. ${hist}</p></div>`;
   }
 
-  // observações
   const partner = L.partnerOf(w, line);
   const techItem = P.general.sections[1].items.find(i => i.label === line.tech);
-  let notes = `<h3>Aquecimento</h3>${warmupHtml(line)}`;
-  if (line.tech && line.tech !== 'N/A') notes += `<h3>Técnica da última série</h3><div class="${last ? 'hl' : ''}"><p><b>${esc(line.tech)}</b></p><p>${esc(techItem?.text || '')}</p></div>`;
+  const hasTech = line.tech && line.tech !== 'N/A';
+  let notes = '';
+  if (hasTech) notes += `<h3>Técnica da última série</h3><div class="${last ? 'hl' : ''}"><p><b>${esc(line.tech)}</b></p><p>${esc(techItem?.text || '')}</p></div>`;
   if (partner) notes += `<h3>Supersérie</h3><p>Com <b>${esc(exName(partner, L.lineState(states, P.id, partner).opt))}</b>. Descanso: ${esc(line.rest)}.</p>`;
   notes += `<h3>Orientações${opt ? ` (escritas para ${esc(exName(line, 0))})` : ''}</h3><p>${esc(line.notes)}</p>`;
   notes += `<h3>Vídeo</h3><a href="${esc(ex.url)}" target="_blank" rel="noopener">${ex.link === 'search' ? 'Buscar no YouTube' : 'Ver vídeo'}: ${esc(exName(line, opt))}</a>`;
   notes += `<button class="linkbtn" data-act="general">Orientações gerais do programa</button>`;
+  const warm = `<h3>Aquecimento</h3>${warmupHtml(line)}`.replace('<h3>Aquecimento</h3>', '');
 
   const altTag = opt ? `<div class="tag alt">Alternativa selecionada. A prescrição e as orientações são da linha original (${esc(exName(line, 0))}).</div>` : '';
   const otherTag = other ? `<div class="tag">Esta série já foi registrada em outra opção desta linha.</div>` : '';
-  const unit = line.unit === 's' ? 'Segundos' : 'Reps feitas';
-  const rpeShow = rpeVal || '—';
-  $('card').innerHTML =
-    `<select class="exname" id="selOpt" aria-label="Exercício">${line.options.map((o, i) => `<option value="${i}"${i === opt ? ' selected' : ''}>${esc(exName(line, i))}${i ? ` (alt. ${i})` : ''}</option>`).join('')}</select>` +
-    altTag +
-    `<div class="stats"><div class="stat"><b>Reps</b><span>${esc(line.reps)}</span></div><div class="stat"><b>Rest</b><span class="small">${esc(line.rest)}</span></div><div class="stat"><b>${rpeLabel}</b><span>${esc(rpeShow)}</span></div></div>` +
-    `<div class="sets">${setsHtml}</div>` + otherTag +
-    `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="${sug == null ? 'PC' : ''}" value="${esc(loadVal !== '' ? loadVal : L.fmtNum(sug))}" class="${sug != null && loadVal === '' ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
-    `<div class="field" id="valf"><label for="val">${unit}</label><input id="val" inputmode="numeric" autocomplete="off" value="${esc(valVal)}"></div></div>` +
-    `<div class="steps"><button data-act="adj" data-d="-2.5">−2,5</button><button data-act="adj" data-d="-1">−1</button><button data-act="adj" data-d="1">+1</button><button data-act="adj" data-d="2.5">+2,5</button></div>` +
-    cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') + optHtml +
-    `<section class="notes">${notes}</section>`;
+  const unit = line.unit === 's' ? 'Segundos' : 'Repetições';
 
   const seq = L.sequence(w, states, P.id);
   const idx = seq.findIndex(s => s.lineId === line.id && s.set === view.set);
@@ -213,11 +205,26 @@ function render() {
   const sub = nxtLine ? (nxtLine.id !== line.id ? `→ ${esc(exName(nxtLine, L.lineState(states, P.id, nxtLine).opt))}` : `→ série ${nxt.set}`) : '';
   const rt = L.resumeTarget(P, logs, states, meta.position);
   const away = meta.position && !(rt.week === view.week && rt.type === view.type && rt.step && rt.step.lineId === view.lineId && rt.step.set === view.set);
-  $('bar').innerHTML = `<div class="in">` +
-    `<button class="nav" data-act="prev" ${idx <= 0 ? 'disabled' : ''} aria-label="Anterior">‹</button>` +
+
+  $('card').innerHTML =
+    `<section class="card">` +
+    `<select class="exname" id="selOpt" aria-label="Exercício">${line.options.map((o, i) => `<option value="${i}"${i === opt ? ' selected' : ''}>${i === 0 ? 'Principal' : 'Alternativa ' + i}: ${esc(exName(line, i))}</option>`).join('')}</select>` +
+    altTag +
+    `<div class="chips"><span class="chip">Reps: <b>${esc(line.reps)}</b></span><span class="chip">Rest: <b>${esc(line.rest)}</b></span><span class="chip">RPE ${view.set}: <b>${esc(rpeVal || '—')}</b></span></div>` +
+    `<div class="sets">${setsHtml}</div>` + otherTag +
+    `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(loadVal !== '' ? loadVal : L.fmtNum(sug))}" class="${sug != null && loadVal === '' ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
+    `<div class="field" id="valf"><label for="val">${unit}</label><input id="val" inputmode="numeric" autocomplete="off" placeholder="—" value="${esc(valVal)}"></div></div>` +
+    `<div class="steps"><button data-act="adj" data-d="-2.5">−2,5</button><button data-act="adj" data-d="-1">−1</button><button data-act="adj" data-d="1">+1</button><button data-act="adj" data-d="2.5">+2,5</button></div>` +
+    cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') + optHtml +
     `<button class="reg" data-act="register">${isDone ? 'Salvar alteração' : 'Registrar série e avançar'}${sub ? `<small>${sub}</small>` : ''}</button>` +
-    `<button class="nav" data-act="next" ${idx >= seq.length - 1 ? 'disabled' : ''} aria-label="Próxima">›</button>` +
-    (away && rt.step ? `<button class="back" data-act="current">Voltar para a série atual</button>` : '') + `</div>`;
+    `</section>` +
+    `<div class="nav"><button data-act="prev" ${idx <= 0 ? 'disabled' : ''}>← Anterior</button><button data-act="next" ${idx >= seq.length - 1 ? 'disabled' : ''}>Próxima →</button>` +
+    (away && rt.step ? `<button class="back" data-act="current">Voltar para a série atual</button>` : '') + `</div>` +
+    `<button class="fold${openWarm ? ' open' : ''}" data-act="toggle" data-k="warm" aria-expanded="${openWarm}"><span>Aquecimento</span><i>▸</i></button>` +
+    (openWarm ? `<div class="panel">${warm}</div>` : '') +
+    `<button class="fold${openNotes ? ' open' : ''}" data-act="toggle" data-k="notes" aria-expanded="${openNotes}"><span>Observações e vídeo${hasTech && last ? '<span class="s">Técnica da última série</span>' : ''}</span><i>▸</i></button>` +
+    (openNotes ? `<div class="panel">${notes}</div>` : '');
+  $('bar').innerHTML = '';
 
   if (focusValue) { focusValue = false; try { $('val').focus(); } catch { } }
 }
@@ -285,6 +292,7 @@ document.addEventListener('click', e => {
     case 'unmark': unmark(); break;
     case 'undo': { const u = undo; $('toast').classList.remove('show'); undo = null; u && u(); break; }
     case 'menu': menuSheet(); break;
+    case 'toggle': if (el.dataset.k === 'warm') openWarm = !openWarm; else openNotes = !openNotes; render(); break;
     case 'general': generalSheet(); break;
     case 'closeSheet': $('sheet').close(); break;
     case 'hideInstall': setMeta('hideInstall', true); render(); break;
