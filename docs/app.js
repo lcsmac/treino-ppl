@@ -334,3 +334,7 @@ document.addEventListener('touchend', e => {
   if (t - lastTouchEnd < 350 && !(e.target.closest && e.target.closest('input,select,textarea'))) e.preventDefault();
   lastTouchEnd = t;
 }, { passive: false });
+
+// A janela do menu/orientações só fecha pelo botão "Fechar" (tocar fora não fecha).
+$('sheet').addEventListener('cancel', e => e.preventDefault());
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) e.stopPropagation(); });
