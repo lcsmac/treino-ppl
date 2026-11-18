@@ -165,7 +165,7 @@ document.addEventListener('pointermove', e => {
   const dy = drag.y - e.clientY;
   if (!drag.moved && Math.abs(dy) < 8) return;
   drag.moved = true; dragged = true; e.preventDefault();
-  const n = L.dialApply(drag.cur, L.dialSteps(dy), { step: drag.step, lo: drag.lo });
+  const n = L.dialApply(drag.cur, L.dialSteps(dy, drag.id === 'load' ? 5 : 2), { step: drag.step, lo: drag.lo });
   drag.inp.value = dialText(drag.id, n, drag.bw); drag.inp.classList.remove('sug'); drag.inp.dataset.sug = '';
   drag.inp.parentElement.parentElement.classList.remove('err');
   dialRefresh(drag.d);
@@ -280,7 +280,7 @@ function render() {
     `<select class="exname" id="selOpt" aria-label="Exercício">${line.options.map((o, i) => `<option value="${i}"${i === opt ? ' selected' : ''}>${i === 0 ? 'Principal' : 'Alternativa ' + i}: ${esc(exName(line, i))}</option>`).join('')}</select>` +
     `<div class="chips"><span class="chip">Reps<b>${esc(line.reps)}</b></span><span class="chip">Rest<b class="${line.rest.length > 10 ? 'sm' : ''}">${esc(line.rest)}</b></span><span class="chip">RPE ${view.set}<b>${esc(rpeVal || '—')}</b></span></div>` +
     `<div class="sets">${setsHtml}</div>` + otherTag +
-    `<div class="fields">${dialHtml('load', 'Carga (kg)', loadShown, loadSug, 2.5, null, L.isBodyweight(ex.ex))}${dialHtml('val', unit, valVal, false, line.unit === 's' ? 5 : 1, (String(line.reps).match(/\d+/) || [null])[0] == null ? null : Number(String(line.reps).match(/\d+/)[0]), false)}</div>` +
+    `<div class="fields">${dialHtml('load', 'Carga (kg)', loadShown, loadSug, 1, null, L.isBodyweight(ex.ex))}${dialHtml('val', unit, valVal, false, line.unit === 's' ? 5 : 1, (String(line.reps).match(/\d+/) || [null])[0] == null ? null : Number(String(line.reps).match(/\d+/)[0]), false)}</div>` +
     cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') +
     `<button class="reg" data-act="register">${isDone ? 'Salvar alteração' : 'Registrar série e avançar'}${sub ? `<small>${sub}</small>` : ''}</button>` +
     `</section>` +

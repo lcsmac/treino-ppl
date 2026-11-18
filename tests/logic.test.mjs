@@ -243,11 +243,11 @@ test('PC: exercícios de peso corporal conhecidos e leitura do texto PC', () => 
 });
 
 test('D1 dial: passos, início da faixa, volta a vazio e aceleração', () => {
-  const c = { step: 2.5 }, r = { step: 1, lo: 10 };
-  assert.equal(L.dialApply(50, 2, c), 55); assert.equal(L.dialApply(50, -1, c), 47.5);
-  assert.equal(L.dialApply(2.5, -1, c), null); assert.equal(L.dialApply(null, -3, c), null);
-  assert.equal(L.dialApply(null, 1, c), 2.5); assert.equal(L.dialApply(null, 1, r), 10); assert.equal(L.dialApply(null, 3, r), 12);
+  const c = { step: 1 }, r = { step: 1, lo: 10 };
+  assert.equal(L.dialApply(50, 2, c), 52); assert.equal(L.dialApply(50, -1, c), 49);
+  assert.equal(L.dialApply(1, -1, c), null); assert.equal(L.dialApply(null, -3, c), null);
+  assert.equal(L.dialApply(null, 1, c), 1); assert.equal(L.dialApply(null, 1, r), 10); assert.equal(L.dialApply(null, 3, r), 12);
   assert.equal(L.dialApply(12, 0, r), 12);
   assert.equal(L.dialSteps(0), 0); assert.equal(L.dialSteps(52), 2); assert.equal(L.dialSteps(-52), -2);
-  assert.ok(L.dialSteps(260) > 10);
+  assert.ok(L.dialSteps(260, 5) > L.dialSteps(260, 2));
 });
