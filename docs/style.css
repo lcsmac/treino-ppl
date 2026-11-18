@@ -77,3 +77,35 @@ dialog .close{position:sticky;bottom:0;width:100%;margin-top:14px;background:#22
 dialog dl{margin:0}dialog dt{font-weight:700;margin-top:8px}dialog dd{margin:0;color:#d5dbe3}
 .msg{margin-top:10px;padding:10px 12px;border-radius:10px;background:#10233a;border:1px solid #1f4a7a}
 .msg.bad{background:#3a1414;border-color:#7a2525}
+/* ===== Esquema de cores suave, respiro no topo e textos centralizados (observações à esquerda) ===== */
+:root{--bg:#0e131b;--card:#1a2332;--line:#2b3a50;--text:#eef3f9;--dim:#9db0c7;--acc:#2dd4bf;--ok:#4ade80;--warn:#fbbf24;--opt:#fbbf24}
+html,body{background:linear-gradient(180deg,#0e131b,#101826);background-attachment:fixed}
+body{padding-top:calc(env(safe-area-inset-top) + 28px);text-align:center}
+select{text-align:center;text-align-last:center;background-color:var(--card);padding:0 34px}
+.exname{font-size:22px;color:#fff;border-color:#3b5170;background-color:#1f2b3f}
+.sets button.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc) inset;background:#12332f}
+.sets button.done{background:#173d2a;border-color:var(--ok);color:#e4ffee}
+.field input{text-align:center}
+.field input.sug{color:#7b8da5}
+.steps button{color:var(--dim)}
+.cmp b{color:var(--acc)}
+.cmp button{text-align:center}
+.optbox label{justify-content:center}
+.optbox p{text-align:center}
+#bar{background:rgba(14,19,27,.96)}
+#bar .reg{background:linear-gradient(180deg,#34e0cb,#1fbfaa);border-color:#2dd4bf;color:#05211d}
+#bar .back{background:#12332f;border-color:#1f5f56;color:#b8f3ea}
+.tag{background:#12332a;border-color:#1f6a50;color:#c5f5dc}
+.tag.alt{background:#33290f;border-color:#6b5316;color:#ffe9a6}
+.optbox{background:#2a2410;border-color:#6b5316}
+.banner{background:#33290f;border-color:#6b5316;color:#ffe9a6;text-align:left}
+.banner.info{background:#10283a;border-color:#1f5a7a;color:#cfe9ff}
+/* observações e orientações gerais: texto à esquerda */
+.notes,.notes p,.notes h3,.notes a,.linkbtn{text-align:left;justify-content:flex-start}
+.notes a,.linkbtn{color:var(--acc)}
+dialog,dialog p,dialog h2,dialog h3,dialog dt,dialog dd{text-align:left}
+dialog .item{text-align:left}
+dialog ul.topics{margin:0 0 4px;padding:0;list-style:none}
+dialog ul.topics li{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);line-height:1.45}
+dialog ul.topics b{color:var(--acc)}
+dialog dt{color:var(--acc)}

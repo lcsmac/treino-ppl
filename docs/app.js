@@ -236,7 +236,13 @@ function menuSheet() {
 }
 function generalSheet() {
   const g = P.general;
-  sheet(`<h2>Orientações gerais</h2><p>${esc(g.notes)}</p>` + g.sections.map(s => `<h3>${esc(s.title)}</h3><dl>${s.items.map(i => `<dt>${esc(i.label)}</dt><dd>${esc(i.text)}</dd>`).join('')}</dl>`).join('') +
+  const lines = g.notes.split('\n').map(x => x.trim()).filter(Boolean);
+  const head = lines.filter(x => !x.startsWith('•')).join(' ');
+  const topics = lines.filter(x => x.startsWith('•')).map(x => {
+    const t = x.replace(/^•\s*/, ''), m = t.match(/^([^:]{1,60}):\s*([\s\S]*)$/);
+    return m ? `<li><b>${esc(m[1])}:</b> ${esc(m[2])}</li>` : `<li>${esc(t)}</li>`;
+  }).join('');
+  sheet(`<h2>Orientações gerais</h2>${head ? `<p>${esc(head)}</p>` : ''}<ul class="topics">${topics}</ul>` + g.sections.map(s => `<h3>${esc(s.title)}</h3><dl>${s.items.map(i => `<dt>${esc(i.label)}</dt><dd>${esc(i.text)}</dd>`).join('')}</dl>`).join('') +
     P.blocks.map(b => `<h3>${esc(b.title)}</h3><p>${esc(b.text)}</p>`).join(''));
 }
 
