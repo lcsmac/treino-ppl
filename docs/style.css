@@ -24,9 +24,10 @@ button:disabled{opacity:.35}
 .exname{min-height:56px;font-weight:700;font-size:18px;background-color:var(--field);border-color:#41535e}
 .tag{margin-top:10px;padding:9px 12px;border-radius:12px;background:#17352c;border:1px solid #2a6a55;color:#c8f3df;font-size:15px}
 .tag.alt{background:#33290f;border-color:#6b5316;color:#ffe9a6}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.chip{padding:8px 14px;border-radius:999px;background:#2f3f4b;color:var(--dim);font-size:16px}
-.chip b{color:var(--text);font-weight:600}
+.chips{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:8px;margin-top:14px}
+.chip{padding:8px 6px;border-radius:16px;background:#2f3f4b;color:var(--dim);font-size:13px;text-align:center;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.2}
+.chip b{display:block;color:var(--text);font-weight:700;font-size:17px;margin-top:2px;overflow-wrap:anywhere}
+.chip b.sm{font-size:14px}
 .sets{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 .sets button{flex:1;min-width:52px;min-height:58px;font-size:21px;position:relative;padding:0;background:var(--sel)}
 .sets button.sel{background:var(--acc);border-color:var(--acc);color:var(--on-acc);font-weight:700}
