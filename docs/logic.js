@@ -136,6 +136,7 @@ export function comparison(program, logs, week, type, exId, set) {
 }
 
 export const DEFAULT_GYM = 'g1';
+export const DEFAULT_GYMS = [{ id: 'g1', name: 'BT' }, { id: 'g2', name: 'BF' }, { id: 'g3', name: 'Ultra' }];
 export const gymOf = r => (r && r.gym) || DEFAULT_GYM;
 
 /** Última vez que o exercício foi feito na academia `gym` (qualquer semana), de preferência na mesma série. */
@@ -210,7 +211,7 @@ export function validateBackup(obj) {
 }
 
 export function toCsv(logs, gyms = []) {
-  const gymName = id => (gyms.find(g => g.id === id) || {}).name || (id === DEFAULT_GYM ? 'Academia 1' : id);
+  const gymName = id => (gyms.find(g => g.id === id) || {}).name || (id === DEFAULT_GYM ? 'BT' : id);
   const head = ['programa', 'semana', 'treino', 'posicao', 'exercicio_original', 'exercicio_realizado', 'opcao', 'serie', 'opcional', 'carga_kg', 'valor', 'unidade', 'concluida_em', 'alterada_em', 'academia', 'id'];
   const rows = Object.values(logs).filter(isDone).sort((a, b) =>
     a.programId.localeCompare(b.programId) || a.week - b.week || WORKOUT_ORDER.indexOf(a.workout) - WORKOUT_ORDER.indexOf(b.workout) || a.pos - b.pos || a.set - b.set || a.opt - b.opt);
