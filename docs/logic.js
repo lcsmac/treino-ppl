@@ -20,8 +20,8 @@ export function lineState(states, programId, line) {
   return states[stateKey(programId, line.id)] || { opt: 0, optionalOn: false };
 }
 
-/** Total de séries visíveis na linha (base + opcional quando ligada). */
-export function totalSets(line, st) { return line.sets + (line.opt && st.optionalOn ? line.opt : 0); }
+/** Total de séries visíveis na linha (base + opcional, sempre visível). */
+export function totalSets(line, st) { return line.sets + (line.opt || 0); }
 
 export function isOptionalSet(line, set) { return set > line.sets; }
 
@@ -65,22 +65,31 @@ export function doneInOption(logs, programId, line, opt, set) {
   return isDone(logs[logId(programId, line.id, opt, set)]);
 }
 
+/** A série opcional nunca é obrigatória: só entra na conta do progresso depois de registrada. */
+const counts = (workout, logs, programId, step) => {
+  const line = getLine(workout, step.lineId);
+  return !isOptionalSet(line, step.set) || positionDone(logs, programId, line, step.set);
+};
 export function progress(workout, logs, states, programId) {
-  const steps = sequence(workout, states, programId);
+  const steps = sequence(workout, states, programId).filter(s => counts(workout, logs, programId, s));
   const done = steps.filter(s => positionDone(logs, programId, getLine(workout, s.lineId), s.set)).length;
   return { done, total: steps.length };
 }
 export function lineProgress(line, logs, states, programId) {
   const n = totalSets(line, lineState(states, programId, line));
-  let done = 0;
-  for (let s = 1; s <= n; s++) if (positionDone(logs, programId, line, s)) done++;
-  return { done, total: n };
+  let done = 0, total = 0;
+  for (let s = 1; s <= n; s++) {
+    const d = positionDone(logs, programId, line, s);
+    if (d) done++;
+    if (d || !isOptionalSet(line, s)) total++;
+  }
+  return { done, total };
 }
 
 /** Próximo passo pendente depois de `from` (ou do início); null se o treino terminou. */
 export function nextPending(workout, logs, states, programId, from) {
   const steps = sequence(workout, states, programId);
-  const pend = s => !positionDone(logs, programId, getLine(workout, s.lineId), s.set);
+  const pend = s => !isOptionalSet(getLine(workout, s.lineId), s.set) && !positionDone(logs, programId, getLine(workout, s.lineId), s.set);
   let i = from ? steps.findIndex(s => s.lineId === from.lineId && s.set === from.set) : -1;
   for (let k = i + 1; k < steps.length; k++) if (pend(steps[k])) return steps[k];
   for (let k = 0; k <= i && k < steps.length; k++) if (pend(steps[k])) return steps[k];

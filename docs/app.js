@@ -57,7 +57,7 @@ function go(week, type, lineId, set) {
 }
 function goLine(lineId) {
   const line = L.getLine(wo(), lineId), n = L.totalSets(line, stOf(line));
-  let s = 1; for (let i = 1; i <= n; i++) if (!L.positionDone(logs, P.id, line, i)) { s = i; break; }
+  let s = 1; for (let i = 1; i <= line.sets; i++) if (!L.positionDone(logs, P.id, line, i)) { s = i; break; }
   view.lineId = lineId; view.set = s; render();
 }
 function move(d) {
@@ -187,14 +187,13 @@ function render() {
   const gymLine = lg ? btn(`Última vez na ${esc(gymName(gid))} · sem. ${lg.week} · série ${lg.set}${lg.set !== view.set ? ' (sem a série ' + view.set + ')' : ''}`, lg) : `<span class="sub">Nenhum registro deste exercício na ${esc(gymName(gid))}.</span>`;
   const cmpHtml = `<div class="cmp${cmp.rec || lg ? '' : ' none'}"><strong>Comparação · série ${view.set}</strong>${prevLine}${sameAsPrev ? '' : gymLine}${sameAsPrev ? `<span class="sub">É também a última nesta academia.</span>` : ''}</div>`;
 
-  let optHtml = '';
+  let optNote = '';
   if (line.opt) {
     const hist = [view.week - 2, view.week - 1].filter(x => x >= 1).map(wk => {
       const rs = L.weekResults(P, logs, wk, view.type, ex.ex);
       return `Sem. ${wk}: ${rs.length ? esc(rs.map(L.fmtResult).join(', ')) : 'sem registro'}`;
     }).join(' · ');
-    optHtml = `<div class="optbox"><label><input type="checkbox" data-act="optional" ${st.optionalOn ? 'checked' : ''}> Adicionar série opcional</label>` +
-      `<p>Só se o exercício progrediu (carga ou repetições) nas 2 semanas anteriores e a recuperação está boa. ${hist}</p></div>`;
+    optNote = `<h3>Série opcional</h3><p>Só faça a série opcional se o exercício progrediu (carga ou repetições) nas 2 semanas anteriores e a recuperação está boa. ${hist}</p>`;
   }
 
   const partner = L.partnerOf(w, line);
@@ -202,6 +201,7 @@ function render() {
   const hasTech = line.tech && line.tech !== 'N/A';
   let notes = '';
   if (hasTech) notes += `<h3>Técnica da última série</h3><div class="${last ? 'hl' : ''}"><p><b>${esc(line.tech)}</b></p><p>${esc(techItem?.text || '')}</p></div>`;
+  notes += optNote;
   if (partner) notes += `<h3>Supersérie</h3><p>Com <b>${esc(exName(partner, L.lineState(states, P.id, partner).opt))}</b>. Descanso: ${esc(line.rest)}.</p>`;
   notes += `<h3>Orientações${opt ? ` (escritas para ${esc(exName(line, 0))})` : ''}</h3><p>${esc(line.notes)}</p>`;
   notes += `<h3>Vídeo</h3><a href="${esc(ex.url)}" target="_blank" rel="noopener">${ex.link === 'search' ? 'Buscar no YouTube' : 'Ver vídeo'}: ${esc(exName(line, opt))}</a>`;
@@ -228,7 +228,7 @@ function render() {
     `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(loadVal !== '' ? loadVal : L.fmtNum(sug))}" class="${sug != null && loadVal === '' ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
     `<div class="field" id="valf"><label for="val">${unit}</label><input id="val" inputmode="numeric" autocomplete="off" placeholder="—" value="${esc(valVal)}"></div></div>` +
     `<div class="steps"><button data-act="adj" data-d="-2.5">−2,5</button><button data-act="adj" data-d="-1">−1</button><button data-act="adj" data-d="1">+1</button><button data-act="adj" data-d="2.5">+2,5</button></div>` +
-    cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') + optHtml +
+    cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') +
     `<button class="reg" data-act="register">${isDone ? 'Salvar alteração' : 'Registrar série e avançar'}${sub ? `<small>${sub}</small>` : ''}</button>` +
     `</section>` +
     `<div class="nav"><button data-act="prev" ${idx <= 0 ? 'disabled' : ''}>← Anterior</button><button data-act="next" ${idx >= seq.length - 1 ? 'disabled' : ''}>Próxima →</button>` +
@@ -343,13 +343,6 @@ document.addEventListener('click', e => {
     case 'adj': {
       const f = $('load'), base = L.parseNum(f.value) ?? L.parseNum(f.dataset.sug) ?? 0, d = Number(el.dataset.d);
       f.value = L.fmtNum(Math.max(0, Math.round((base + d) * 100) / 100)); f.classList.remove('sug'); saveDraft(); break;
-    }
-    case 'optional': {
-      const k = L.stateKey(P.id, line.id), cur = states[k] || { opt: 0, optionalOn: false };
-      states[k] = { ...cur, optionalOn: el.checked }; persistState(line);
-      if (!el.checked && view.set > line.sets) view.set = line.sets;
-      else if (el.checked) view.set = line.sets + 1;
-      render(); break;
     }
   }
 });

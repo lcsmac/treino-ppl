@@ -132,15 +132,17 @@ test('S5/S8 opcional só onde a planilha marca', () => {
     if (l.opt) { assert.ok([4, 5, 9, 10].includes(w.n)); assert.ok(!['Bíceps', 'Panturrilha'].includes(l.muscle)); }
   }
 });
-test('S7 desligar a opcional preserva o registro e tira do progresso', () => {
-  const logs = {}, l = byName(4, 'Pull A', 'Wide-Grip Lat Pulldown'), k = L.stateKey(pid, l.id);
-  const on = { [k]: { opt: 0, optionalOn: true } };
-  rec(logs, 4, 'Pull A', l, 0, 3, 60, 10);
-  assert.equal(L.lineProgress(l, logs, on, pid).total, 3);
-  assert.equal(L.lineProgress(l, logs, on, pid).done, 1);
+test('S7 a opcional sempre aparece, mas só entra no progresso depois de registrada', () => {
+  const logs = {}, l = byName(4, 'Pull A', 'Wide-Grip Lat Pulldown'), w = wo(4, 'Pull A');
   assert.deepEqual(L.lineProgress(l, logs, {}, pid), { done: 0, total: 2 });
-  assert.ok(logs[L.logId(pid, l.id, 0, 3)]);
+  assert.equal(L.totalSets(l, { opt: 0, optionalOn: false }), 3);
+  assert.ok(L.sequence(w, {}, pid).some(s => s.lineId === l.id && s.set === 3));
+  rec(logs, 4, 'Pull A', l, 0, 1, 60, 10); rec(logs, 4, 'Pull A', l, 0, 2, 60, 10);
+  assert.notEqual(L.nextPending(w, logs, {}, pid, { lineId: l.id, set: 2 })?.lineId, l.id); // não empurra para a opcional
+  rec(logs, 4, 'Pull A', l, 0, 3, 60, 10);
+  assert.deepEqual(L.lineProgress(l, logs, {}, pid), { done: 3, total: 3 });
   assert.match(L.toCsv(logs), /;3;sim;60;10;/);
+  assert.equal(L.rpeFor(l, {}, 3), l.rpeL); assert.equal(L.rpeFor(l, {}, 2), l.rpe1);
 });
 test('carga sugerida: série anterior, depois comparação', () => {
   const logs = {}, l2 = byName(2, 'Push A', 'Pec Deck'), l3 = byName(3, 'Push A', 'Pec Deck');
