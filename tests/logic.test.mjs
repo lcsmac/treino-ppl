@@ -23,7 +23,7 @@ test('I1 contagens da importação', () => {
   assert.equal(lines.reduce((a, l) => a + l.options.length, 0), 1380);
   assert.equal(Object.keys(P.exercises).length, 104);
   assert.equal(lines.reduce((a, l) => a + l.opt, 0), 24);
-  for (const w of P.weeks) assert.equal(new Set(w.workouts.flatMap(x => x.lines.filter(l => l.ss).map(l => x.type + l.ss))).size, 7);
+  for (const w of P.weeks) assert.equal(new Set(w.workouts.flatMap(x => x.lines.filter(l => l.ss).map(l => x.type + l.ss))).size, 4);
 });
 test('I2 semana 1: 2 séries, RPE ~7/~8, sem técnica', () => {
   for (const x of P.weeks[0].workouts) for (const l of x.lines) assert.deepEqual([l.sets, l.rpe1, l.rpeL, l.tech], [2, '~7', '~8', 'N/A']);
@@ -31,8 +31,8 @@ test('I2 semana 1: 2 séries, RPE ~7/~8, sem técnica', () => {
 test('I3 Barbell RDL semanas 2-10', () => {
   for (let w = 2; w <= 10; w++) { const l = byName(w, 'Legs B', 'Barbell RDL'); assert.deepEqual([l.sets, l.rpe1, l.rpeL], [3, '~7', '~8']); }
 });
-test('I4 Standing Calf Raise, Pull A, semana 2', () => {
-  const l = byName(2, 'Pull A', 'Standing Calf Raise'); assert.deepEqual([l.sets, l.tech, l.rpeL], [3, 'Falha', '10']);
+test('I4 Standing Calf Raise, agora no Push A, semana 2', () => {
+  const l = byName(2, 'Push A', 'Standing Calf Raise'); assert.deepEqual([l.sets, l.tech, l.rpeL], [3, 'Falha', '10']);
 });
 test('I5 nota diz 4 séries, linha manda 2', () => {
   const l = byName(1, 'Pull A', 'Seated Super-Bayesian High Cable Curl');
@@ -95,8 +95,8 @@ test('C3 principal na semana 5, alternativa na semana 6', () => {
   assert.equal(L.comparison(P, logs, 6, 'Pull A', l6.options[0].ex, 1).kind, 'none');
 });
 test('C5 mesmo exercício em outro treino não entra', () => {
-  const logs = {}, a = byName(2, 'Pull A', 'Standing Calf Raise'), b = byName(3, 'Legs A', 'Standing Calf Raise');
-  rec(logs, 2, 'Pull A', a, 0, 1, 80, 12);
+  const logs = {}, a = byName(2, 'Push A', 'Standing Calf Raise'), b = byName(3, 'Legs A', 'Standing Calf Raise');
+  rec(logs, 2, 'Push A', a, 0, 1, 80, 12);
   assert.equal(L.comparison(P, logs, 3, 'Legs A', b.options[0].ex, 1).kind, 'none');
 });
 test('C6 rascunho na semana anterior não aparece', () => {
@@ -110,12 +110,13 @@ test('comparação recua para a última vez feita', () => {
   const c = L.comparison(P, logs, 4, 'Push A', l4.options[0].ex, 1);
   assert.deepEqual([c.kind, c.week], ['earlier', 2]);
 });
-test('S1 par igual 3 e 3', () => {
-  assert.deepEqual(seqNames(2, 'Pull A').slice(-9, -3), ['1-Arm 45° Cable Rear Delt Flye#1', 'Standing Calf Raise#1', '1-Arm 45° Cable Rear Delt Flye#2', 'Standing Calf Raise#2', '1-Arm 45° Cable Rear Delt Flye#3', 'Standing Calf Raise#3']);
+test('S1 par igual 3 e 3 (Pull B, Hammer e Cable Crunch, semana 2)', () => {
+  const q = seqNames(2, 'Pull B').filter(x => /Hammer|Crunch/.test(x));
+  assert.deepEqual(q, ['DB Hammer Curl#1', 'Cable Crunch#1', 'DB Hammer Curl#2', 'Cable Crunch#2', 'DB Hammer Curl#3', 'Cable Crunch#3']);
 });
-test('S2 par desigual 4 e 3', () => {
-  const s = seqNames(2, 'Legs A').filter(x => /Preacher|Lateral/.test(x)).map(x => x.replace('Machine Preacher Curl', 'A').replace('Single-Arm Cable Lateral Raise', 'B'));
-  assert.deepEqual(s, ['A#1', 'B#1', 'A#2', 'B#2', 'A#3', 'B#3', 'A#4']);
+test('S2 par desigual 3 e 2 (Legs A, Leg Extension e Pallof Press)', () => {
+  const s = seqNames(2, 'Legs A').filter(x => /Leg Extension|Pallof/.test(x)).map(x => x.replace('Leg Extension', 'A').replace('Pallof Press', 'B'));
+  assert.deepEqual(s, ['A#1', 'B#1', 'A#2', 'B#2', 'A#3']);
 });
 test('S3 opcional da Leg Extension ligada: 4 contra 2', () => {
   const le = byName(4, 'Legs A', 'Leg Extension');
@@ -172,4 +173,29 @@ test('D8 CSV com BOM, ponto e vírgula e vírgula decimal', () => {
 });
 test('números aceitam vírgula e ponto', () => {
   assert.equal(L.parseNum('52,5'), 52.5); assert.equal(L.parseNum('52.5'), 52.5); assert.equal(L.parseNum(''), null); assert.equal(L.parseNum('abc'), null);
+});
+
+test('ajuste: bíceps e panturrilha redistribuídos, 14 séries cada, notas corrigidas', () => {
+  const vol = (w, m) => Object.fromEntries(P.weeks[w - 1].workouts.map(x => [x.type, x.lines.filter(l => l.muscle === m).reduce((a, l) => a + l.sets, 0)]).filter(([, v]) => v));
+  for (const w of [2, 3, 8]) {
+    assert.deepEqual(vol(w, 'Bíceps'), { 'Push A': 4, 'Pull A': 4, 'Pull B': 6 });
+    assert.deepEqual(vol(w, 'Panturrilha'), { 'Push A': 3, 'Legs A': 4, 'Pull B': 3, 'Legs B': 4 });
+  }
+  for (const w of P.weeks) {
+    const last = x => x.lines.at(-1).muscle; assert.equal(last(w.workouts.find(x => x.type === 'Push A')), 'Antebraço');
+    for (const x of w.workouts) for (const l of x.lines) {
+      assert.doesNotMatch(l.notes, /domingo|puxada de sexta|neutra de segunda|técnica de segunda/);
+      if (l.rest.startsWith('Supersérie')) assert.ok(l.ss, 'linha com descanso de supersérie precisa de par');
+      else assert.equal(l.ss, null);
+    }
+  }
+  assert.match(P.general.notes, /Seg Push A · Ter Pull A/); assert.ok(P.changes.length >= 5);
+  const moved = P.weeks[1].workouts.flatMap(x => x.lines.filter(l => l.moved).map(l => [x.type, l.moved, l.orig.rest]));
+  assert.deepEqual(moved, [['Push A', 'Legs A', 'Supersérie: 2 min após o par'], ['Push A', 'Pull A', 'Supersérie: 2 min após o par'], ['Pull B', 'Push B', 'Supersérie: 2 min após o par']]);
+});
+test('ajuste: registros antigos continuam achados pelo id da linha', () => {
+  const calfOld = P.weeks[1].workouts.find(x => x.type === 'Push A').lines.find(l => l.moved === 'Pull A');
+  assert.match(calfOld.id, /^w2-pull-a-/);
+  const logs = {}; rec(logs, 2, 'Pull A', calfOld, 0, 1, 70, 12);
+  assert.equal(L.positionDone(logs, pid, calfOld, 1), true);
 });

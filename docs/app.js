@@ -235,6 +235,7 @@ function menuSheet() {
   const lb = meta.lastBackup;
   sheet(`<h2>Menu</h2>` +
     `<button class="item" data-act="general">Orientações gerais do programa</button>` +
+    (P.changes && P.changes.length ? `<button class="item" data-act="changes">Alterações em relação à planilha<small>${P.changes.length} ajustes pedidos por você</small></button>` : '') +
     `<button class="item" data-act="backup">Fazer backup<small>${lb ? `Último: ${new Date(lb.at).toLocaleString('pt-BR')} (${lb.count} séries)` : 'Nenhum backup feito ainda'}</small></button>` +
     `<button class="item" data-act="restore">Restaurar backup<small>Junta com os registros atuais; vale o mais recente.</small></button>` +
     `<button class="item" data-act="csv">Exportar CSV<small>${doneCount()} séries concluídas</small></button>` +
@@ -293,6 +294,7 @@ document.addEventListener('click', e => {
     case 'undo': { const u = undo; $('toast').classList.remove('show'); undo = null; u && u(); break; }
     case 'menu': menuSheet(); break;
     case 'toggle': if (el.dataset.k === 'warm') openWarm = !openWarm; else openNotes = !openNotes; render(); break;
+    case 'changes': sheet(`<h2>Alterações em relação à planilha</h2><ul class="topics">${P.changes.map(c => `<li>${esc(c)}</li>`).join('')}</ul><p>Os valores originais de cada linha alterada ficam guardados no programa.</p>`); break;
     case 'general': generalSheet(); break;
     case 'closeSheet': $('sheet').close(); break;
     case 'hideInstall': setMeta('hideInstall', true); render(); break;
