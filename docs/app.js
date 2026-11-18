@@ -326,3 +326,11 @@ document.addEventListener('input', e => {
 document.addEventListener('focusin', e => { if (e.target.id === 'load' && e.target.classList.contains('sug')) e.target.select(); });
 
 init().catch(err => { document.body.insertAdjacentHTML('afterbegin', `<div class="banner">Erro ao iniciar: ${esc(err.message)}</div>`); console.error(err); });
+
+// Reforço contra o zoom por toque duplo no iOS (o zoom por pinça não é afetado).
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const t = Date.now();
+  if (t - lastTouchEnd < 350 && !(e.target.closest && e.target.closest('input,select,textarea'))) e.preventDefault();
+  lastTouchEnd = t;
+}, { passive: false });

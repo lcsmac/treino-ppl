@@ -109,3 +109,5 @@ dialog ul.topics{margin:0 0 4px;padding:0;list-style:none}
 dialog ul.topics li{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);line-height:1.45}
 dialog ul.topics b{color:var(--acc)}
 dialog dt{color:var(--acc)}
+/* sem zoom por toque duplo (o zoom por pinça continua disponível) */
+html,body,button,select,input,a,label{touch-action:manipulation}
