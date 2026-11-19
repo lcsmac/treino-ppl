@@ -160,8 +160,8 @@ export function dialApply(cur, steps, { step, lo = null }) {
   return v <= 0 ? null : v;
 }
 /** Passos de um arrasto vertical de `dy` px (positivo = para cima); acelera em arrastos longos. */
-export function dialSteps(dy, fast = 2, px = 26) {
-  const a = Math.abs(dy) / px, n = a < 5 ? Math.floor(a) : 5 + Math.floor((a - 5) * fast);
+export function dialSteps(dy, px = 26) {
+  const a = Math.abs(dy) / px, n = a < 5 ? Math.floor(a) : 5 + Math.floor((a - 5) * 2);
   return dy < 0 ? -n : n;
 }
 
