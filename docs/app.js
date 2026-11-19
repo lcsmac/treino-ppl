@@ -220,7 +220,6 @@ function render() {
     `<div class="sets">${setsHtml}</div>` + otherTag +
     `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(loadVal !== '' ? loadVal : (sug != null ? L.fmtNum(sug) : (L.isBodyweight(ex.ex) ? 'PC' : '')))}" class="${loadVal === '' && (sug != null || L.isBodyweight(ex.ex)) ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
     `<div class="field" id="valf"><label for="val">${unit}</label><input id="val" inputmode="numeric" autocomplete="off" placeholder="—" value="${esc(valVal)}"></div></div>` +
-    `<div class="steps"><button data-act="adj" data-d="-2.5">−2,5</button><button data-act="adj" data-d="-1">−1</button><button data-act="adj" data-d="1">+1</button><button data-act="adj" data-d="2.5">+2,5</button></div>` +
     cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') +
     `<button class="reg" data-act="register">${isDone ? 'Salvar alteração' : 'Registrar série e avançar'}${sub ? `<small>${sub}</small>` : ''}</button>` +
     `</section>` +
