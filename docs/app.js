@@ -175,18 +175,10 @@ function render() {
   const sug = !cur || cur.deleted ? L.suggestedLoad(P, logs, view.week, view.type, line, opt, view.set, curGym()) : null;
   const loadVal = cur && !cur.deleted ? L.fmtNum(cur.load) : '';
   const valVal = cur && !cur.deleted ? L.fmtNum(cur.value) : '';
-  const cmp = L.comparison(P, logs, view.week, view.type, ex.ex, view.set);
-  const gid = curGym(), many = gyms().length > 1;
-  const gtag = r => many ? ` · ${esc(gymName(L.gymOf(r)))}` : '';
-  const btn = (label, r) => `<button class="t" data-act="copy" data-load="${r.load ?? ''}">${label}: <b>${esc(L.fmtResult(r))}</b></button>`;
-  let prevLine;
-  if (cmp.kind === 'prev') prevLine = btn(`Sem. ${cmp.week}${gtag(cmp.rec)}`, cmp.rec);
-  else if (cmp.kind === 'earlier') prevLine = `<span class="sub">Sem registro na semana ${view.week - 1}.</span>` + btn(`Última vez, sem. ${cmp.week}${gtag(cmp.rec)}`, cmp.rec);
-  else prevLine = `<span class="sub">${view.week > 1 ? `Sem registro na semana ${view.week - 1}.` : 'Sem semana anterior neste programa'}</span>`;
-  const lg = L.lastInGym(logs, ex.ex, view.set, gid, L.logId(P.id, line.id, opt, view.set));
-  const sameAsPrev = lg && cmp.rec && lg.id === cmp.rec.id;
-  const gymLine = lg ? btn(`Última vez na ${esc(gymName(gid))} · sem. ${lg.week} · série ${lg.set}${lg.set !== view.set ? ' (sem a série ' + view.set + ')' : ''}`, lg) : `<span class="sub">Nenhum registro deste exercício na ${esc(gymName(gid))}.</span>`;
-  const cmpHtml = `<div class="cmp${cmp.rec || lg ? '' : ' none'}"><strong>Comparação · série ${view.set}</strong>${prevLine}${sameAsPrev ? '' : gymLine}${sameAsPrev ? `<span class="sub">É também a última nesta academia.</span>` : ''}</div>`;
+  const lg = L.lastInGym(logs, ex.ex, view.set, curGym(), L.logId(P.id, line.id, opt, view.set));
+  const cmpHtml = `<div class="cmp${lg ? '' : ' none'}"><strong>Última vez · série ${view.set}</strong>` + (lg
+    ? `<button class="t" data-act="copy" data-load="${lg.load ?? ''}">Sem. ${lg.week} · série ${lg.set}${lg.set !== view.set ? ` (sem a série ${view.set})` : ''}: <b>${esc(L.fmtResult(lg))}</b></button>`
+    : `<span class="sub">Sem registro deste exercício nesta academia.</span>`) + `</div>`;
 
   let optNote = '';
   if (line.opt) {
