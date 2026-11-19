@@ -241,13 +241,3 @@ test('PC: exercícios de peso corporal conhecidos e leitura do texto PC', () => 
   assert.ok(L.isBodyweight('hanging-leg-raise')); assert.ok(!L.isBodyweight('leg-press'));
   assert.ok(L.isPC('PC') && L.isPC(' pc ') && !L.isPC('10') && !L.isPC(''));
 });
-
-test('D1 dial: passos, início da faixa, volta a vazio e aceleração', () => {
-  const c = { step: 2.5 }, r = { step: 1, lo: 10 };
-  assert.equal(L.dialApply(50, 2, c), 55); assert.equal(L.dialApply(50, -1, c), 47.5);
-  assert.equal(L.dialApply(2.5, -1, c), null); assert.equal(L.dialApply(null, -3, c), null);
-  assert.equal(L.dialApply(null, 1, c), 2.5); assert.equal(L.dialApply(null, 1, r), 10); assert.equal(L.dialApply(null, 3, r), 12);
-  assert.equal(L.dialApply(12, 0, r), 12);
-  assert.equal(L.dialSteps(0), 0); assert.equal(L.dialSteps(52), 2); assert.equal(L.dialSteps(-52), -2);
-  assert.ok(L.dialSteps(260) > 10);
-});

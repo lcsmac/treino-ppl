@@ -150,21 +150,6 @@ export const BODYWEIGHT = new Set(['hanging-leg-raise', 'roman-chair-leg-raise',
 export const isBodyweight = exId => BODYWEIGHT.has(exId);
 export const isPC = t => /^\s*pc\s*$/i.test(String(t ?? ''));
 
-/** Dial vertical: valor depois de `steps` passos. Vazio (null) = PC/—; descer abaixo do mínimo volta a vazio.
- *  Se estava vazio, o primeiro passo para cima cai em `lo` (início da faixa de repetições) quando informado. */
-export function dialApply(cur, steps, { step, lo = null }) {
-  if (!steps) return cur;
-  if (cur == null && steps < 0) return null;
-  const base = cur ?? (lo != null ? lo - step : 0);
-  const v = Math.round((base + steps * step) * 100) / 100;
-  return v <= 0 ? null : v;
-}
-/** Passos de um arrasto vertical de `dy` px (positivo = para cima); acelera em arrastos longos. */
-export function dialSteps(dy, px = 26) {
-  const a = Math.abs(dy) / px, n = a < 5 ? Math.floor(a) : 5 + Math.floor((a - 5) * 2);
-  return dy < 0 ? -n : n;
-}
-
 export const DEFAULT_GYM = 'g2';
 export const DEFAULT_GYMS = [{ id: 'g1', name: 'BT' }, { id: 'g2', name: 'BF' }, { id: 'g3', name: 'Ultra' }];
 export const gymOf = r => (r && r.gym) || DEFAULT_GYM;

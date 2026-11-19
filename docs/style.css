@@ -89,10 +89,3 @@ dialog ul.topics b{color:var(--acc)}
 .msg{margin-top:10px;padding:10px 12px;border-radius:12px;background:#10283a;border:1px solid #1f5a7a}
 .msg.bad{background:#3a1414;border-color:#7a2525}
 .cmp button.t{display:block;margin-top:6px}.cmp button.t:first-of-type{margin-top:2px}
-
-.dial{display:flex;flex-direction:column;align-items:center;justify-content:center;height:124px;border:1px solid #41535e;background:var(--field);border-radius:16px;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden;cursor:ns-resize}
-.dial .g{height:28px;line-height:28px;font-size:18px;font-weight:600;color:#4a5d6a;font-variant-numeric:tabular-nums}
-.dial input{width:100%;min-height:60px;text-align:center;border:0;background:transparent;border-radius:0;padding:0;font-size:36px;pointer-events:none}
-.dial input:not([readonly]){pointer-events:auto}
-.dial:focus-within{border-color:var(--acc)}
-.field.err .dial{border-color:#ff7b7b}

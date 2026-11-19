@@ -134,57 +134,6 @@ function techMark(line, st, set) {
   return line.tech.startsWith('Parciais') ? 'LLP' : line.tech;
 }
 
-const numOf = (id, t) => (id === 'load' && L.isPC(t) ? null : L.parseNum(t));
-function dialText(id, n, bw) { return n == null ? (id === 'load' && bw ? 'PC' : '') : L.fmtNum(n); }
-function dialHtml(id, label, value, sug, step, lo, bw) {
-  const cur = numOf(id, value);
-  const ghost = n => `<span class="g">${esc(dialText(id, n, bw) || '—')}</span>`;
-  return `<div class="field" id="${id === 'load' ? 'loadf' : 'valf'}"><label for="${id}">${esc(label)}</label>` +
-    `<div class="dial" data-id="${id}" data-step="${step}" data-lo="${lo ?? ''}" data-bw="${bw ? 1 : ''}">` +
-    `${ghost(L.dialApply(cur, 1, { step, lo }))}` +
-    `<input id="${id}" inputmode="${id === 'load' ? 'decimal' : 'numeric'}" autocomplete="off" readonly placeholder="—" value="${esc(value)}" class="${sug ? 'sug' : ''}" data-sug="${id === 'load' && sug && !bw ? esc(value) : ''}">` +
-    `${ghost(L.dialApply(cur, -1, { step, lo }))}</div></div>`;
-}
-function dialRefresh(d) {
-  const id = d.dataset.id, inp = d.querySelector('input'), step = Number(d.dataset.step), lo = d.dataset.lo === '' ? null : Number(d.dataset.lo), bw = !!d.dataset.bw;
-  const cur = numOf(id, inp.value), g = d.querySelectorAll('.g');
-  g[0].textContent = dialText(id, L.dialApply(cur, 1, { step, lo }), bw) || '—';
-  g[1].textContent = dialText(id, L.dialApply(cur, -1, { step, lo }), bw) || '—';
-}
-let drag = null, dragged = false;
-document.addEventListener('pointerdown', e => {
-  const d = e.target.closest('.dial'); if (!d) return;
-  const inp = d.querySelector('input'); if (!inp.readOnly) return; // digitando
-  const id = d.dataset.id;
-  drag = { d, inp, id, y: e.clientY, cur: numOf(id, inp.value), step: Number(d.dataset.step), lo: d.dataset.lo === '' ? null : Number(d.dataset.lo), bw: !!d.dataset.bw, moved: false };
-  dragged = false;
-  try { d.setPointerCapture(e.pointerId); } catch { }
-});
-document.addEventListener('pointermove', e => {
-  if (!drag) return;
-  const dy = drag.y - e.clientY;
-  if (!drag.moved && Math.abs(dy) < 8) return;
-  drag.moved = true; dragged = true; e.preventDefault();
-  const n = L.dialApply(drag.cur, L.dialSteps(dy), { step: drag.step, lo: drag.lo });
-  drag.inp.value = dialText(drag.id, n, drag.bw); drag.inp.classList.remove('sug'); drag.inp.dataset.sug = '';
-  drag.inp.parentElement.parentElement.classList.remove('err');
-  dialRefresh(drag.d);
-}, { passive: false });
-const endDrag = () => { if (!drag) return; const m = drag.moved; drag = null; if (m) saveDraft(); };
-document.addEventListener('pointerup', endDrag);
-document.addEventListener('pointercancel', endDrag);
-document.addEventListener('click', e => {
-  const d = e.target.closest('.dial'); if (!d) return;
-  if (dragged) { dragged = false; return; }
-  const inp = d.querySelector('input'); if (!inp.readOnly) return;
-  inp.readOnly = false; inp.focus(); try { inp.select(); } catch { }
-});
-document.addEventListener('focusout', e => {
-  const t = e.target; if (!t.closest || !t.closest('.dial')) return;
-  t.readOnly = true; if (t.value.trim() === '' && t.id === 'load' && t.parentElement.dataset.bw) t.value = 'PC';
-  dialRefresh(t.parentElement);
-});
-
 function render() {
   const w = wo(), line = lineOf(), st = stOf(line), n = L.totalSets(line, st);
   if (view.set > n) view.set = n;
@@ -226,9 +175,6 @@ function render() {
   const sug = !cur || cur.deleted ? L.suggestedLoad(P, logs, view.week, view.type, line, opt, view.set, curGym()) : null;
   const loadVal = cur && !cur.deleted ? L.fmtNum(cur.load) : '';
   const valVal = cur && !cur.deleted ? L.fmtNum(cur.value) : '';
-  const bw = L.isBodyweight(ex.ex);
-  const loadShown = loadVal !== '' ? loadVal : (sug != null ? L.fmtNum(sug) : (bw ? 'PC' : ''));
-  const loadSug = loadVal === '' && (sug != null || bw);
   const cmp = L.comparison(P, logs, view.week, view.type, ex.ex, view.set);
   const gid = curGym(), many = gyms().length > 1;
   const gtag = r => many ? ` · ${esc(gymName(L.gymOf(r)))}` : '';
@@ -280,7 +226,9 @@ function render() {
     `<select class="exname" id="selOpt" aria-label="Exercício">${line.options.map((o, i) => `<option value="${i}"${i === opt ? ' selected' : ''}>${i === 0 ? 'Principal' : 'Alternativa ' + i}: ${esc(exName(line, i))}</option>`).join('')}</select>` +
     `<div class="chips"><span class="chip">Reps<b>${esc(line.reps)}</b></span><span class="chip">Rest<b class="${line.rest.length > 10 ? 'sm' : ''}">${esc(line.rest)}</b></span><span class="chip">RPE ${view.set}<b>${esc(rpeVal || '—')}</b></span></div>` +
     `<div class="sets">${setsHtml}</div>` + otherTag +
-    `<div class="fields">${dialHtml('load', 'Carga (kg)', loadShown, loadSug, 2.5, null, L.isBodyweight(ex.ex))}${dialHtml('val', unit, valVal, false, line.unit === 's' ? 5 : 1, (String(line.reps).match(/\d+/) || [null])[0] == null ? null : Number(String(line.reps).match(/\d+/)[0]), false)}</div>` +
+    `<div class="fields"><div class="field" id="loadf"><label for="load">Carga (kg)</label><input id="load" inputmode="decimal" autocomplete="off" placeholder="—" value="${esc(loadVal !== '' ? loadVal : (sug != null ? L.fmtNum(sug) : (L.isBodyweight(ex.ex) ? 'PC' : '')))}" class="${loadVal === '' && (sug != null || L.isBodyweight(ex.ex)) ? 'sug' : ''}" data-sug="${sug == null ? '' : esc(String(sug))}"></div>` +
+    `<div class="field" id="valf"><label for="val">${unit}</label><input id="val" inputmode="numeric" autocomplete="off" placeholder="—" value="${esc(valVal)}"></div></div>` +
+    `<div class="steps"><button data-act="adj" data-d="-2.5">−2,5</button><button data-act="adj" data-d="-1">−1</button><button data-act="adj" data-d="1">+1</button><button data-act="adj" data-d="2.5">+2,5</button></div>` +
     cmpHtml + (isDone ? `<button class="unmark" data-act="unmark">Remover conclusão desta série</button>` : '') +
     `<button class="reg" data-act="register">${isDone ? 'Salvar alteração' : 'Registrar série e avançar'}${sub ? `<small>${sub}</small>` : ''}</button>` +
     `</section>` +
@@ -292,7 +240,7 @@ function render() {
     (openNotes ? `<div class="panel">${altTag}${notes}</div>` : '');
   $('bar').innerHTML = '';
 
-  focusValue = false;
+  if (focusValue) { focusValue = false; try { $('val').focus(); } catch { } }
 }
 
 function sheet(html) { const d = $('sheet'); d.innerHTML = html + `<button class="close" data-act="closeSheet">Fechar</button>`; if (!d.open) d.showModal(); }
@@ -392,7 +340,11 @@ document.addEventListener('click', e => {
     case 'restore': $('file').value = ''; $('file').click(); break;
     case 'csv': deliver(`treino-registros-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv', L.toCsv(logs, gyms())); break;
     case 'current': { const t = L.resumeTarget(P, logs, states, meta.position); if (t.step) go(t.week, t.type, t.step.lineId, t.step.set); break; }
-    case 'copy': { const l = el.dataset.load; if (l !== '') { const f = $('load'); f.value = L.fmtNum(Number(l)); f.classList.remove('sug'); f.dataset.sug = ''; dialRefresh(f.parentElement); saveDraft(); } break; }
+    case 'copy': { const l = el.dataset.load; if (l !== '') { const f = $('load'); f.value = L.fmtNum(Number(l)); f.classList.remove('sug'); saveDraft(); } break; }
+    case 'adj': {
+      const f = $('load'), base = L.parseNum(f.value) ?? L.parseNum(f.dataset.sug) ?? 0, d = Number(el.dataset.d);
+      f.value = L.fmtNum(Math.max(0, Math.round((base + d) * 100) / 100)); f.classList.remove('sug'); saveDraft(); break;
+    }
   }
 });
 document.addEventListener('change', e => {
