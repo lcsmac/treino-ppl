@@ -110,19 +110,19 @@ test('comparação recua para a última vez feita', () => {
   const c = L.comparison(P, logs, 4, 'Push A', l4.options[0].ex, 1);
   assert.deepEqual([c.kind, c.week], ['earlier', 2]);
 });
-test('S1 par igual 3 e 3 (Pull B, Hammer e Cable Crunch, semana 2)', () => {
+test('S1 supersérie não alterna: séries seguidas (Pull B, Hammer e Cable Crunch, semana 2)', () => {
   const q = seqNames(2, 'Pull B').filter(x => /Hammer|Crunch/.test(x));
-  assert.deepEqual(q, ['DB Hammer Curl#1', 'Cable Crunch#1', 'DB Hammer Curl#2', 'Cable Crunch#2', 'DB Hammer Curl#3', 'Cable Crunch#3']);
+  assert.deepEqual(q, ['DB Hammer Curl#1', 'DB Hammer Curl#2', 'DB Hammer Curl#3', 'Cable Crunch#1', 'Cable Crunch#2', 'Cable Crunch#3']);
 });
 test('S2 par desigual 3 e 2 (Legs A, Leg Extension e Pallof Press)', () => {
   const s = seqNames(2, 'Legs A').filter(x => /Leg Extension|Pallof/.test(x)).map(x => x.replace('Leg Extension', 'A').replace('Pallof Press', 'B'));
-  assert.deepEqual(s, ['A#1', 'B#1', 'A#2', 'B#2', 'A#3']);
+  assert.deepEqual(s, ['A#1', 'A#2', 'A#3', 'B#1', 'B#2']);
 });
 test('S3 opcional da Leg Extension ligada: 4 contra 2', () => {
   const le = byName(4, 'Legs A', 'Leg Extension');
   const states = { [L.stateKey(pid, le.id)]: { opt: 0, optionalOn: true } };
   const s = seqNames(4, 'Legs A', states).filter(x => /Leg Extension|Pallof/.test(x)).map(x => x.replace('Leg Extension', 'A').replace('Pallof Press', 'B'));
-  assert.deepEqual(s, ['A#1', 'B#1', 'A#2', 'B#2', 'A#3', 'A#4']);
+  assert.deepEqual(s, ['A#1', 'A#2', 'A#3', 'A#4', 'B#1', 'B#2']);
   assert.equal(L.isOptionalSet(le, 4), true);
   assert.equal(L.rpeFor(le, states[L.stateKey(pid, le.id)], 4), '~9');
   assert.equal(L.rpeFor(le, states[L.stateKey(pid, le.id)], 3), '~8-9');

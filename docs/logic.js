@@ -29,23 +29,13 @@ export function isOptionalSet(line, set) { return set > line.sets; }
 export function rpeFor(line, st, set) { return set === totalSets(line, st) ? line.rpeL : line.rpe1; }
 export function isLastSet(line, st, set) { return set === totalSets(line, st); }
 
-/** Sequência de passos do treino: superséries alternam A1, B1, A2, B2...; sobras seguem sozinhas. */
+/** Sequência de passos do treino: cada exercício com todas as suas séries, na ordem da planilha.
+ *  As superséries mantêm o ícone ⇄ e o aviso do par, mas não alternam mais automaticamente. */
 export function sequence(workout, states, programId) {
   const steps = [];
-  const L = workout.lines;
-  for (let i = 0; i < L.length; i++) {
-    const a = L[i], b = L[i + 1];
+  for (const a of workout.lines) {
     const na = totalSets(a, lineState(states, programId, a));
-    if (a.ss && b && b.ss === a.ss) {
-      const nb = totalSets(b, lineState(states, programId, b));
-      for (let s = 1; s <= Math.max(na, nb); s++) {
-        if (s <= na) steps.push({ lineId: a.id, set: s });
-        if (s <= nb) steps.push({ lineId: b.id, set: s });
-      }
-      i++;
-    } else {
-      for (let s = 1; s <= na; s++) steps.push({ lineId: a.id, set: s });
-    }
+    for (let s = 1; s <= na; s++) steps.push({ lineId: a.id, set: s });
   }
   return steps;
 }
